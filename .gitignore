@@ -1,3 +1,5 @@
 .zed/
 
 go.sum
+
+*.log
