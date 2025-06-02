@@ -1,5 +1,6 @@
 package kg
 
+// TODO: KnowledgeGraph is currently just in memory, but will be persisted in SpacetimeDB in the future.
 type KnowledgeGraph struct {
 	Nodes []Node
 	Edges []Edge
