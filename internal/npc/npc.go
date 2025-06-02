@@ -2,10 +2,10 @@ package npc
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/piercegov/llm-npc-backend/internal/kg"
 	"github.com/piercegov/llm-npc-backend/internal/llm"
+	"github.com/piercegov/llm-npc-backend/internal/logging"
 )
 
 type NPCTickInput struct {
@@ -32,11 +32,11 @@ type Surrounding struct {
 func (n *NPC) ActForTick(input NPCTickInput) {
 	surroundingsString, err := ParseSurroundings(input)
 	if err != nil {
-		log.Fatalf("Error parsing surroundings: %v", err)
+		logging.Error("Error parsing surroundings: %v", err)
 	}
 	knowledgeGraphString, err := ParseKnowledgeGraph(input)
 	if err != nil {
-		log.Fatalf("Error parsing knowledge graph: %v", err)
+		logging.Error("Error parsing knowledge graph: %v", err)
 	}
 
 	llmRequest := llm.LLMRequest{
@@ -45,7 +45,7 @@ func (n *NPC) ActForTick(input NPCTickInput) {
 
 	llmResponse, err := CallLLM(llmRequest)
 	if err != nil {
-		log.Fatalf("Error calling LLM: %v", err)
+		logging.Error("Error calling LLM: %v", err)
 	}
 
 	fmt.Println(llmResponse.Response)
@@ -67,7 +67,7 @@ func ParseSurroundings(input NPCTickInput) (string, error) {
 func ParseKnowledgeGraph(input NPCTickInput) (string, error) {
 	depth := input.KnowledgeGraphDepth
 	if depth == 0 {
-		depth = 1
+		return "<knowledge_graph></knowledge_graph>", nil
 	}
 
 	kgString := "<knowledge_graph>\n"

@@ -5,7 +5,12 @@ import (
 	"testing"
 
 	"github.com/piercegov/llm-npc-backend/internal/kg"
+	"github.com/piercegov/llm-npc-backend/internal/logging"
 )
+
+func init() {
+	logging.InitLogger("debug")
+}
 
 func TestParseSurroundings(t *testing.T) {
 	surroundings := []Surrounding{
