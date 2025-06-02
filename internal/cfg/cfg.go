@@ -1,23 +1,24 @@
 package cfg
 
 import (
-	"log"
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/piercegov/llm-npc-backend/internal/logging"
 )
 
 type Config struct {
-	Port     string
-	ApiKey   string
-	BaseUrl  string
-	LogLevel string
+	Port        string
+	ApiKey      string
+	BaseUrl     string
+	LogLevel    string
+	OllamaModel string
 }
 
 func ReadConfig() Config {
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("Warning: .env file not found, using environment variables and defaults")
+		logging.Warn("Warning: .env file not found, using environment variables and defaults")
 	}
 
 	port := os.Getenv("PORT")
@@ -27,7 +28,7 @@ func ReadConfig() Config {
 
 	apiKey := os.Getenv("CEREBRAS_API_KEY")
 	if apiKey == "" {
-		log.Fatal("CEREBRAS_API_KEY environment variable is not set")
+		logging.Warn("CEREBRAS_API_KEY environment variable is not set")
 	}
 
 	baseURL := os.Getenv("CEREBRAS_BASE_URL")
@@ -40,15 +41,21 @@ func ReadConfig() Config {
 		logLevel = "info"
 	}
 
+	ollamaModel := os.Getenv("OLLAMA_MODEL")
+	if ollamaModel == "" {
+		ollamaModel = "qwen3:1.7b"
+	}
+
 	return Config{
-		Port:     port,
-		ApiKey:   apiKey,
-		BaseUrl:  baseURL,
-		LogLevel: logLevel,
+		Port:        port,
+		ApiKey:      apiKey,
+		BaseUrl:     baseURL,
+		LogLevel:    logLevel,
+		OllamaModel: ollamaModel,
 	}
 }
 
-func NewConfig(port, apiKey, baseUrl, logLevel string) Config {
+func NewConfig(port, apiKey, baseUrl, logLevel, ollamaModel string) Config {
 	return Config{
 		Port:     port,
 		ApiKey:   apiKey,

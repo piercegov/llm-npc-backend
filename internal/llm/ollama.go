@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/piercegov/llm-npc-backend/internal/cfg"
 	"github.com/piercegov/llm-npc-backend/internal/logging"
 )
 
@@ -83,8 +84,10 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 		}
 	}
 
+	ollamaModel := cfg.ReadConfig().OllamaModel
+
 	requestMap := map[string]interface{}{
-		"model": "qwen3:1.7b", // Ensure this model supports tool calling with the Ollama API
+		"model": ollamaModel,
 		"messages": []map[string]interface{}{
 			{
 				"role":    "user",
