@@ -3,3 +3,6 @@
 go.sum
 
 *.log
+
+backend
+.env
