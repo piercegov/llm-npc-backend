@@ -1,0 +1,152 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+This is a Go-based HTTP backend for powering Non-Player Characters (NPCs) in video games using Large Language Models. The framework is designed to be compatible with popular game engines (Godot, Unity, Unreal Engine).
+
+## Development Commands
+
+### Building and Running
+- **Build**: `go build ./cmd/backend/...`
+- **Run**: `./backend` (after building)
+- **Dependencies**: `go mod tidy`
+
+### Testing
+- **Run all tests**: `go test ./...`
+- **Run specific package tests**: `go test ./internal/api`
+- **Run tests with verbose output**: `go test -v ./...`
+
+## Architecture
+
+### Core Modules
+- **`cmd/backend/main.go`**: HTTP server entry point with basic health check and root endpoints
+- **`internal/npc/`**: Core NPC logic with tick-based action system (`ActForTick`)
+- **`internal/llm/`**: LLM provider interface and implementations (currently Ollama)
+- **`internal/api/`**: HTTP middleware, error handling, and request tracing
+- **`internal/kg/`**: Knowledge graph integration for NPC context and memory
+- **`internal/cfg/`**: Configuration management via environment variables
+
+### Key Concepts
+- **NPCs**: Defined by `Name` and `BackgroundStory`, process `Surroundings` on each tick
+- **LLM Provider Interface**: Abstraction layer supporting multiple LLM providers
+- **Knowledge Graph**: Configurable depth system for NPC context and decision-making
+- **Tool System**: LLMs can use predefined tools for game-specific actions
+- **Tick-based Actions**: NPCs operate on `ActForTick` cycles for dynamic behavior
+
+### Testing Patterns
+- Uses standard Go testing with `httptest` for HTTP handlers
+- Middleware tests validate request tracing, panic recovery, and method validation
+- Tests use table-driven test patterns for multiple scenarios
+
+## Configuration
+
+Environment variables (can be set in `.env` file):
+- `PORT`: Server port (default: 8080)
+- `OLLAMA_MODEL`: Ollama model to use (default: qwen3:1.7b)
+- `CEREBRAS_API_KEY`: Cerebras API key (optional)
+- `CEREBRAS_BASE_URL`: Cerebras API base URL (default: https://api.cerebras.ai)
+- `LOG_LEVEL`: Logging level - debug, info, warn, error (default: info)
+
+## Current API Endpoints
+- `GET /`: Root endpoint returning "LLM NPC Backend is running!"
+- `GET /health`: Health check returning "pong"
+- `GET /npc`: Mock NPC endpoint demonstrating LLM integration (temporary testing endpoint)
+
+## Project Structure Guide
+
+**IMPORTANT**: Always update this section when adding new files or changing the project structure.
+
+### Directory Layout
+```
+llm-npc-backend/
+├── cmd/
+│   └── backend/
+│       └── main.go              # HTTP server entry point, route definitions, handlers
+├── internal/                    # Private application code (not importable by other projects)
+│   ├── api/
+│   │   ├── errors.go           # Standardized error responses and error codes
+│   │   ├── middleware.go       # HTTP middleware (logging, panic recovery, tracing, CORS)
+│   │   └── middleware_test.go  # Middleware unit tests
+│   ├── cfg/
+│   │   └── cfg.go              # Configuration management, env var parsing
+│   ├── kg/
+│   │   └── kg.go               # Knowledge graph data structures (Node, Edge, KnowledgeGraph)
+│   ├── llm/
+│   │   ├── common.go           # LLM interfaces (LLMProvider, LLMRequest, LLMResponse, Tool)
+│   │   ├── ollama.go           # Ollama LLM provider implementation
+│   │   └── ollama_test.go      # Ollama provider tests
+│   ├── logging/
+│   │   └── logger.go           # Structured logging setup using slog
+│   ├── npc/
+│   │   ├── npc.go              # Core NPC logic, ActForTick, prompt parsing
+│   │   ├── npc_test.go         # NPC unit tests
+│   │   └── prompts.go          # NPC system prompts and templates
+│   └── store/                  # (Placeholder for future data persistence)
+├── pkg/                        # Public packages (can be imported by other projects)
+│   └── model/                  # (Placeholder for shared data models)
+├── go.mod                      # Go module definition
+├── README.md                   # Project documentation for users
+└── CLAUDE.md                   # This file - AI assistant guidance
+
+### Module Responsibilities
+
+#### `cmd/backend/main.go`
+- HTTP server initialization and configuration
+- Route definitions and handler setup
+- Middleware application
+- Currently contains mock NPC handler for testing
+
+#### `internal/api/`
+- **errors.go**: Defines error codes and standardized JSON error responses
+- **middleware.go**: Implements cross-cutting concerns (request ID, logging, panic recovery, CORS)
+
+#### `internal/cfg/`
+- **cfg.go**: Central configuration management, reads environment variables, provides defaults
+
+#### `internal/kg/`
+- **kg.go**: Knowledge graph structures for NPC memory and world state representation
+
+#### `internal/llm/`
+- **common.go**: Defines provider-agnostic interfaces for LLM integration
+  - `LLMProvider`: Interface for LLM implementations
+  - `LLMRequest`: Includes SystemPrompt, Prompt, and Tools
+  - `LLMResponse`: Contains response text and tool uses
+  - `Tool`: Defines callable tools/functions for LLMs
+- **ollama.go**: Ollama-specific implementation of LLMProvider
+
+#### `internal/logging/`
+- **logger.go**: Configures structured logging with different log levels
+
+#### `internal/npc/`
+- **npc.go**: Core NPC behavior logic
+  - `ActForTick`: Main NPC action loop
+  - Surroundings and knowledge graph parsing
+  - LLM interaction
+- **prompts.go**: System prompt templates
+  - Instructs LLMs to use `<thinking>` tags for internal reasoning
+  - Ensures clean separation of thoughts vs. speech/actions
+
+### Key Design Patterns
+
+1. **Interface-based Design**: LLM providers implement a common interface for easy swapping
+2. **Middleware Chain**: HTTP concerns handled through composable middleware
+3. **Structured Logging**: Consistent log format with contextual information
+4. **Environment-based Config**: All configuration through environment variables
+5. **Tick-based NPCs**: Game loop compatible design for NPC actions
+
+### Adding New Features
+
+When adding new features:
+1. Place internal code in `internal/` with appropriate module
+2. Update this structure guide with new files/modules
+3. Add tests alongside implementation files
+4. Update configuration in `cfg.go` if new env vars needed
+5. Document new API endpoints in this file
+
+### Testing Strategy
+- Unit tests live alongside implementation files (*_test.go)
+- Use table-driven tests for multiple scenarios
+- Mock external dependencies (LLMs, databases)
+- Integration tests should use the mock handlers

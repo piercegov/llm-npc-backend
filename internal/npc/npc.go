@@ -39,8 +39,11 @@ func (n *NPC) ActForTick(input NPCTickInput) {
 		logging.Error("Error parsing knowledge graph: %v", err)
 	}
 
+	systemPrompt := BuildNPCSystemPrompt(n.Name, n.BackgroundStory)
+
 	llmRequest := llm.LLMRequest{
-		Prompt: surroundingsString + "\n" + knowledgeGraphString,
+		SystemPrompt: systemPrompt,
+		Prompt:       surroundingsString + "\n" + knowledgeGraphString,
 	}
 
 	llmResponse, err := CallLLM(llmRequest)
@@ -52,7 +55,9 @@ func (n *NPC) ActForTick(input NPCTickInput) {
 }
 
 func CallLLM(input llm.LLMRequest) (llm.LLMResponse, error) {
-	return llm.LLMResponse{}, nil
+	// TODO: This should be configurable to support multiple LLM providers
+	ollama := llm.NewOllama("11434")
+	return ollama.Generate(input)
 }
 
 func ParseSurroundings(input NPCTickInput) (string, error) {

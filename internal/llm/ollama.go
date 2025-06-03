@@ -86,15 +86,26 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 
 	ollamaModel := cfg.ReadConfig().OllamaModel
 
+	messages := []map[string]interface{}{}
+	
+	// Add system message if provided
+	if request.SystemPrompt != "" {
+		messages = append(messages, map[string]interface{}{
+			"role":    "system",
+			"content": request.SystemPrompt,
+		})
+	}
+	
+	// Add user message
+	messages = append(messages, map[string]interface{}{
+		"role":    "user",
+		"content": request.Prompt,
+	})
+
 	requestMap := map[string]interface{}{
-		"model": ollamaModel,
-		"messages": []map[string]interface{}{
-			{
-				"role":    "user",
-				"content": request.Prompt,
-			},
-		},
-		"stream": false,
+		"model":    ollamaModel,
+		"messages": messages,
+		"stream":   false,
 	}
 
 	// Only add the "tools" field if there are formatted tools

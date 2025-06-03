@@ -37,7 +37,11 @@ func TestParseKnowledgeGraph(t *testing.T) {
 		},
 	}
 
-	knowledgeGraphString, err := ParseKnowledgeGraph(NPCTickInput{KnowledgeGraph: knowledgeGraph})
+	// Test with depth > 0
+	knowledgeGraphString, err := ParseKnowledgeGraph(NPCTickInput{
+		KnowledgeGraph:      knowledgeGraph,
+		KnowledgeGraphDepth: 1,
+	})
 	if err != nil {
 		t.Errorf("Error parsing knowledge graph: %v", err)
 	}
@@ -46,5 +50,19 @@ func TestParseKnowledgeGraph(t *testing.T) {
 	expected := "<knowledge_graph>\n\t<nodes>\n\t\t<node>\n\t\t\t<node_id>Node 1</node_id>\n\t\t\t<node_data>map[name:Node 1]</node_data>\n\t\t</node>\n\t</nodes>\n\t<edges>\n\t</edges>\n</knowledge_graph>"
 	if knowledgeGraphString != expected {
 		t.Errorf("Expected %s, got %s", expected, knowledgeGraphString)
+	}
+
+	// Test with depth = 0
+	knowledgeGraphStringEmpty, err := ParseKnowledgeGraph(NPCTickInput{
+		KnowledgeGraph:      knowledgeGraph,
+		KnowledgeGraphDepth: 0,
+	})
+	if err != nil {
+		t.Errorf("Error parsing knowledge graph with depth 0: %v", err)
+	}
+
+	expectedEmpty := "<knowledge_graph></knowledge_graph>"
+	if knowledgeGraphStringEmpty != expectedEmpty {
+		t.Errorf("Expected empty knowledge graph %s, got %s", expectedEmpty, knowledgeGraphStringEmpty)
 	}
 }

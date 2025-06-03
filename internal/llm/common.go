@@ -16,8 +16,9 @@ type ToolUse struct {
 }
 
 type LLMRequest struct {
-	Prompt string
-	Tools  []Tool
+	SystemPrompt string
+	Prompt       string
+	Tools        []Tool
 }
 
 type Tool struct {
