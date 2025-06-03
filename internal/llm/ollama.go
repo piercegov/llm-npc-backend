@@ -114,8 +114,17 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 		return LLMResponse{}, err
 	}
 
-	// Restore original logging line
-	logging.Info("Sending request to Ollama", "request", string(jsonBody))
+	// Log request in a more readable format
+	logging.Info("Sending request to Ollama",
+		"model", ollamaModel,
+		"system_prompt_length", len(request.SystemPrompt),
+		"user_prompt_length", len(request.Prompt),
+		"tools_count", len(formattedTools),
+	)
+	logging.Debug("Ollama request details",
+		"system_prompt", request.SystemPrompt,
+		"user_prompt", request.Prompt,
+	)
 
 	httpRequest, err := http.NewRequest("POST", "http://localhost:"+o.OLLAMA_PORT+"/api/chat", bytes.NewBuffer(jsonBody))
 	if err != nil {

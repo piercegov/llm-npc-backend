@@ -18,10 +18,13 @@ import (
 )
 
 func main() {
-	// Initialize structured logging
+	// Initialize structured logging with default level
 	logging.InitLogger("info")
 
 	config := cfg.ReadConfig()
+
+	// Reinitialize logger with configured log level
+	logging.InitLogger(config.LogLevel)
 
 	// Remove any existing socket file
 	os.Remove(config.SocketPath)
@@ -67,12 +70,18 @@ func main() {
 			KnowledgeGraph:      kg.KnowledgeGraph{},
 			NPCState:            npc.NPCState{},
 			KnowledgeGraphDepth: 0,
+			Events:              []npc.NPCTickEvent{}, // Empty events to see LLM behavior
 		}
+
+		// Parse the input to generate prompt
+		surroundingsString, _ := npc.ParseSurroundings(mockInput)
+		knowledgeGraphString, _ := npc.ParseKnowledgeGraph(mockInput)
+		eventsString, _ := npc.ParseEvents(mockInput)
 
 		systemPrompt := npc.BuildNPCSystemPrompt(mockNPC.Name, mockNPC.BackgroundStory)
 		llmRequest := llm.LLMRequest{
 			SystemPrompt: systemPrompt,
-			Prompt:       "What do you do in this situation?",
+			Prompt:       surroundingsString + "\n" + knowledgeGraphString + "\n" + eventsString,
 		}
 
 		ollama := llm.NewOllama("11434")
@@ -87,6 +96,7 @@ func main() {
 			"npc_name":         mockNPC.Name,
 			"background_story": mockNPC.BackgroundStory,
 			"surroundings":     mockInput.Surroundings,
+			"events":           mockInput.Events,
 			"llm_response":     response.Response,
 		})
 	})

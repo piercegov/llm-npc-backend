@@ -8,11 +8,18 @@ import (
 	"github.com/piercegov/llm-npc-backend/internal/logging"
 )
 
+// Maybe this should be related to the knowledge graph?
+type NPCTickEvent struct {
+	EventType        string
+	EventDescription string
+}
+
 type NPCTickInput struct {
 	Surroundings        []Surrounding
 	KnowledgeGraph      kg.KnowledgeGraph
 	NPCState            NPCState
 	KnowledgeGraphDepth int
+	Events              []NPCTickEvent
 }
 type NPC struct {
 	Name            string
@@ -38,12 +45,25 @@ func (n *NPC) ActForTick(input NPCTickInput) {
 	if err != nil {
 		logging.Error("Error parsing knowledge graph: %v", err)
 	}
+	eventsString, err := ParseEvents(input)
+	if err != nil {
+		logging.Error("Error parsing events: %v", err)
+	}
 
 	systemPrompt := BuildNPCSystemPrompt(n.Name, n.BackgroundStory)
 
+	// Log NPC action details
+	logging.Info("NPC ActForTick",
+		"npc_name", n.Name,
+		"surroundings_count", len(input.Surroundings),
+		"events_count", len(input.Events),
+		"knowledge_graph_nodes", len(input.KnowledgeGraph.Nodes),
+		"knowledge_graph_edges", len(input.KnowledgeGraph.Edges),
+	)
+
 	llmRequest := llm.LLMRequest{
 		SystemPrompt: systemPrompt,
-		Prompt:       surroundingsString + "\n" + knowledgeGraphString,
+		Prompt:       surroundingsString + "\n" + knowledgeGraphString + "\n" + eventsString,
 	}
 
 	llmResponse, err := CallLLM(llmRequest)
@@ -89,6 +109,19 @@ func ParseKnowledgeGraph(input NPCTickInput) (string, error) {
 	kgString += "</knowledge_graph>"
 
 	return kgString, nil
+}
+
+func ParseEvents(input NPCTickInput) (string, error) {
+	if len(input.Events) == 0 {
+		return "<events_since_last_tick></events_since_last_tick>", nil
+	}
+
+	eventsString := "<events_since_last_tick>\n"
+	for _, event := range input.Events {
+		eventsString += fmt.Sprintf("\t<event>\n\t\t<event_type>%s</event_type>\n\t\t<event_description>%s</event_description>\n\t</event>\n", event.EventType, event.EventDescription)
+	}
+	eventsString += "</events_since_last_tick>"
+	return eventsString, nil
 }
 
 func ParseNPCState(input NPCTickInput) (NPCState, error) {
