@@ -9,8 +9,19 @@ import (
 )
 
 func TestOllama_Generate_SuccessfulResponse(t *testing.T) {
-	expectedServerResponse := map[string]string{"message": "success"}
-	jsonExpectedServerResponse, _ := json.Marshal(expectedServerResponse)
+	// Create a proper Ollama response structure
+	expectedContent := "Hello! How can I help you today?"
+	ollamaResponse := map[string]interface{}{
+		"model":      "test-model",
+		"created_at": "2023-01-01T00:00:00Z",
+		"message": map[string]interface{}{
+			"role":    "assistant",
+			"content": expectedContent,
+		},
+		"done":        true,
+		"done_reason": "stop",
+	}
+	jsonOllamaResponse, _ := json.Marshal(ollamaResponse)
 
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		// Check if the request path is /api/chat
@@ -22,10 +33,10 @@ func TestOllama_Generate_SuccessfulResponse(t *testing.T) {
 			t.Errorf("Expected POST request, got '%s'", req.Method)
 		}
 
-		// Send a 200 OK response with a minimal JSON body
+		// Send a 200 OK response with a proper Ollama JSON body
 		rw.Header().Set("Content-Type", "application/json")
 		rw.WriteHeader(http.StatusOK)
-		rw.Write(jsonExpectedServerResponse)
+		rw.Write(jsonOllamaResponse)
 	}))
 	defer server.Close()
 
@@ -45,7 +56,11 @@ func TestOllama_Generate_SuccessfulResponse(t *testing.T) {
 	}
 
 	if response.StatusCode != http.StatusOK {
-		t.Errorf("Generate() responseBody = %s, want %s", response.Response, string(jsonExpectedServerResponse))
+		t.Errorf("Expected status code %d, got %d", http.StatusOK, response.StatusCode)
+	}
+
+	if response.Response != expectedContent {
+		t.Errorf("Generate() response content = %s, want %s", response.Response, expectedContent)
 	}
 }
 

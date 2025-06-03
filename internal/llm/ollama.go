@@ -18,13 +18,25 @@ type ollamaFunctionCall struct {
 	} `json:"function"`
 }
 
-// ollamaResponseForToolParsing is a helper struct to unmarshal the JSON response
-// and access the nested tool_calls from Ollama.
-type ollamaResponseForToolParsing struct {
-	Message struct {
+// ollamaResponse represents the full JSON response from Ollama API
+type ollamaResponse struct {
+	Model     string `json:"model"`
+	CreatedAt string `json:"created_at"`
+	Message   struct {
+		Role      string               `json:"role"`
+		Content   string               `json:"content"`
 		ToolCalls []ollamaFunctionCall `json:"tool_calls"`
 	} `json:"message"`
+	Done           bool   `json:"done"`
+	DoneReason     string `json:"done_reason"`
+	TotalDuration  int64  `json:"total_duration"`
+	LoadDuration   int64  `json:"load_duration"`
+	PromptEvalCount int    `json:"prompt_eval_count"`
+	PromptEvalDuration int64 `json:"prompt_eval_duration"`
+	EvalCount      int    `json:"eval_count"`
+	EvalDuration   int64  `json:"eval_duration"`
 }
+
 
 // ollamaToolFunctionDetails defines the "function" part of a tool definition for requests.
 type ollamaToolFunctionDetails struct {
@@ -47,29 +59,6 @@ func NewOllama(ollamaPort string) *Ollama {
 	return &Ollama{OLLAMA_PORT: ollamaPort}
 }
 
-// extractToolUses parses the Ollama response and converts its tool calls
-// to the common llm.ToolUse type.
-func extractToolUses(responseBody string) []ToolUse { // Return type is the common llm.ToolUse
-	var parsedOllamaResp ollamaResponseForToolParsing
-	if err := json.Unmarshal([]byte(responseBody), &parsedOllamaResp); err != nil {
-		logging.Error("Failed to unmarshal Ollama response for tool extraction", "error", err, "body", responseBody)
-		return []ToolUse{} // Return empty slice of common llm.ToolUse on error
-	}
-
-	if parsedOllamaResp.Message.ToolCalls == nil {
-		return []ToolUse{}
-	}
-
-	// Convert []ollamaFunctionCall to []llm.ToolUse
-	commonToolUses := make([]ToolUse, len(parsedOllamaResp.Message.ToolCalls))
-	for i, ollamaCall := range parsedOllamaResp.Message.ToolCalls {
-		commonToolUses[i] = ToolUse{ // This now refers to llm.ToolUse from common.go
-			ToolName: ollamaCall.Function.Name,
-			ToolArgs: ollamaCall.Function.Arguments,
-		}
-	}
-	return commonToolUses
-}
 
 func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 	// Transform common.Tool to Ollama-specific tool format
@@ -150,11 +139,25 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 		return LLMResponse{}, err
 	}
 
-	toolUses := extractToolUses(string(body))
+	// Parse the full Ollama response
+	var parsedResp ollamaResponse
+	if err := json.Unmarshal(body, &parsedResp); err != nil {
+		logging.Error("Failed to unmarshal Ollama response", "error", err, "body", string(body))
+		return LLMResponse{}, err
+	}
+
+	// Extract tool uses from the parsed response
+	toolUses := make([]ToolUse, len(parsedResp.Message.ToolCalls))
+	for i, ollamaCall := range parsedResp.Message.ToolCalls {
+		toolUses[i] = ToolUse{
+			ToolName: ollamaCall.Function.Name,
+			ToolArgs: ollamaCall.Function.Arguments,
+		}
+	}
 
 	return LLMResponse{
 		StatusCode: response.StatusCode,
-		Response:   string(body),
+		Response:   parsedResp.Message.Content, // Extract only the content
 		ToolUses:   toolUses,
 	}, nil
 }
