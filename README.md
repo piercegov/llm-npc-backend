@@ -12,6 +12,7 @@ This project provides a backend framework for powering Non-Player Characters (NP
     *   Supports stateful NPCs with a (planned) configurable `NPCState` (e.g., for health, inventory, faction alignment).
     *   NPCs perceive their `Surroundings` (objects/characters with names and descriptions).
     *   Operates on a tick-based action cycle (`ActForTick`) for dynamic behavior.
+    *   Tracks events since last tick via `NPCTickEvent` for temporal awareness.
 *   **Knowledge Graph (KG) Integration:** NPCs can leverage an internal knowledge graph for richer context, memory, and decision-making. The depth of KG information used can be configured per interaction.
 *   **Tool Usage by LLMs:** Supports prompting LLMs to use predefined "tools." This allows NPCs to trigger game-specific actions, perform lookups, or execute other programmed capabilities. Tools are defined with a name, description, and parameters.
 *   **Configuration via Environment:** Easily configurable through environment variables or a `.env` file (socket path, LLM model selection, API keys, logging level).
@@ -78,6 +79,7 @@ The following environment variables are used for configuration. You can set them
 *   `LOG_LEVEL`: Sets the logging level for the application.
     *   Options: `debug`, `info`, `warn`, `error`
     *   Default: `info`
+    *   Note: Use `debug` to see full LLM prompts and responses
 
 ## Usage / API Endpoints
 The primary interaction with the backend is via Unix socket communication using HTTP protocol.

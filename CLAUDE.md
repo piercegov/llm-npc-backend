@@ -31,6 +31,7 @@ This is a Go-based backend for powering Non-Player Characters (NPCs) in video ga
 
 ### Key Concepts
 - **NPCs**: Defined by `Name` and `BackgroundStory`, process `Surroundings` on each tick
+- **NPCTickEvent**: Tracks events that occurred since the last tick for temporal awareness
 - **LLM Provider Interface**: Abstraction layer supporting multiple LLM providers
 - **Knowledge Graph**: Configurable depth system for NPC context and decision-making
 - **Tool System**: LLMs can use predefined tools for game-specific actions
@@ -49,6 +50,7 @@ Environment variables (can be set in `.env` file):
 - `CEREBRAS_API_KEY`: Cerebras API key (optional)
 - `CEREBRAS_BASE_URL`: Cerebras API base URL (default: https://api.cerebras.ai)
 - `LOG_LEVEL`: Logging level - debug, info, warn, error (default: info)
+  - Set to `debug` to see full LLM prompts and responses in logs
 
 ## Current API Endpoints
 - `GET /`: Root endpoint returning "LLM NPC Backend is running!"
@@ -116,6 +118,8 @@ llm-npc-backend/
   - `LLMResponse`: Contains response text and tool uses
   - `Tool`: Defines callable tools/functions for LLMs
 - **ollama.go**: Ollama-specific implementation of LLMProvider
+  - Properly parses Ollama API responses to extract only content
+  - Structured logging instead of raw JSON for better readability
 
 #### `internal/logging/`
 - **logger.go**: Configures structured logging with different log levels
@@ -124,7 +128,9 @@ llm-npc-backend/
 - **npc.go**: Core NPC behavior logic
   - `ActForTick`: Main NPC action loop
   - Surroundings and knowledge graph parsing
-  - LLM interaction
+  - Event tracking with `NPCTickEvent` for temporal awareness
+  - LLM interaction with structured XML prompts
+  - `ParseEvents`: Formats events since last tick in XML
 - **prompts.go**: System prompt templates
   - Instructs LLMs to use `<thinking>` tags for internal reasoning
   - Ensures clean separation of thoughts vs. speech/actions
