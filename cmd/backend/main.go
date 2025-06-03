@@ -3,8 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/piercegov/llm-npc-backend/internal/api"
 	"github.com/piercegov/llm-npc-backend/internal/cfg"
@@ -15,13 +18,16 @@ import (
 )
 
 func main() {
-	config := cfg.ReadConfig()
-	
 	// Initialize structured logging
-	logging.InitLogger(config.LogLevel)
-	
-	logging.Info("Starting LLM NPC Backend server", 
-		"port", config.Port, 
+	logging.InitLogger("info")
+
+	config := cfg.ReadConfig()
+
+	// Remove any existing socket file
+	os.Remove(config.SocketPath)
+
+	logging.Info("Starting LLM NPC Backend server",
+		"socket", config.SocketPath,
 		"log_level", config.LogLevel,
 		"cerebras_base_url", config.BaseUrl)
 
@@ -89,27 +95,40 @@ func main() {
 	http.Handle("/", api.ApplyDefaultMiddleware(
 		api.WithMethodValidation(rootHandler, "GET"),
 	))
-	
+
 	http.Handle("/health", api.ApplyDefaultMiddleware(
 		api.WithMethodValidation(healthHandler, "GET"),
 	))
-	
+
 	http.Handle("/npc", api.ApplyDefaultMiddleware(
 		api.WithMethodValidation(npcHandler, "GET"),
 	))
-	
-	logging.Info("Server starting", "address", ":"+config.Port)
-	
-	// Set up the server
-	server := &http.Server{
-		Addr:    ":" + config.Port,
-		Handler: nil, // Use default ServeMux
-	}
 
-	// Start the server
-	err := server.ListenAndServe()
+	// Create Unix socket listener
+	listener, err := net.Listen("unix", config.SocketPath)
 	if err != nil {
-		logging.Error("Server failed to start", "error", err, "port", config.Port)
+		logging.Error("Failed to create Unix socket", "error", err, "socket", config.SocketPath)
+		os.Exit(1)
+	}
+	defer listener.Close()
+
+	// Handle graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		logging.Info("Shutting down server...")
+		listener.Close()
+		os.Remove(config.SocketPath)
+	}()
+
+	logging.Info("Server listening on Unix socket", "socket", config.SocketPath)
+
+	// Start serving on the Unix socket
+	err = http.Serve(listener, nil)
+	if err != nil && err != net.ErrClosed {
+		logging.Error("Server error", "error", err)
 		os.Exit(1)
 	}
 }

@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	Port        string
+	SocketPath  string
 	ApiKey      string
 	BaseUrl     string
 	LogLevel    string
@@ -21,9 +21,9 @@ func ReadConfig() Config {
 		logging.Warn("Warning: .env file not found, using environment variables and defaults")
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	socketPath := os.Getenv("SOCKET_PATH")
+	if socketPath == "" {
+		socketPath = "/tmp/llm-npc-backend.sock"
 	}
 
 	apiKey := os.Getenv("CEREBRAS_API_KEY")
@@ -47,7 +47,7 @@ func ReadConfig() Config {
 	}
 
 	return Config{
-		Port:        port,
+		SocketPath:  socketPath,
 		ApiKey:      apiKey,
 		BaseUrl:     baseURL,
 		LogLevel:    logLevel,
@@ -55,11 +55,12 @@ func ReadConfig() Config {
 	}
 }
 
-func NewConfig(port, apiKey, baseUrl, logLevel, ollamaModel string) Config {
+func NewConfig(socketPath, apiKey, baseUrl, logLevel, ollamaModel string) Config {
 	return Config{
-		Port:     port,
-		ApiKey:   apiKey,
-		BaseUrl:  baseUrl,
-		LogLevel: logLevel,
+		SocketPath:  socketPath,
+		ApiKey:      apiKey,
+		BaseUrl:     baseUrl,
+		LogLevel:    logLevel,
+		OllamaModel: ollamaModel,
 	}
 }

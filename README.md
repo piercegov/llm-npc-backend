@@ -6,7 +6,7 @@ This project provides a backend framework for powering Non-Player Characters (NP
 *   **LLM Agnostic Design:** Utilizes a flexible `LLMProvider` interface, enabling support for various Large Language Models.
     *   Currently implemented for Ollama.
     *   Planned support for other providers like OpenAI, Cerebras, Groq, etc.
-*   **HTTP API:** Exposes NPC functionalities via a standard HTTP-based API for easy integration with game engines.
+*   **Unix Socket Communication:** Uses Unix domain sockets for efficient, low-latency IPC communication instead of HTTP.
 *   **Core NPC Functionality:**
     *   NPCs are defined with a `Name` and `BackgroundStory`.
     *   Supports stateful NPCs with a (planned) configurable `NPCState` (e.g., for health, inventory, faction alignment).
@@ -14,7 +14,7 @@ This project provides a backend framework for powering Non-Player Characters (NP
     *   Operates on a tick-based action cycle (`ActForTick`) for dynamic behavior.
 *   **Knowledge Graph (KG) Integration:** NPCs can leverage an internal knowledge graph for richer context, memory, and decision-making. The depth of KG information used can be configured per interaction.
 *   **Tool Usage by LLMs:** Supports prompting LLMs to use predefined "tools." This allows NPCs to trigger game-specific actions, perform lookups, or execute other programmed capabilities. Tools are defined with a name, description, and parameters.
-*   **Configuration via Environment:** Easily configurable through environment variables or a `.env` file (port, LLM model selection, API keys, logging level).
+*   **Configuration via Environment:** Easily configurable through environment variables or a `.env` file (socket path, LLM model selection, API keys, logging level).
 
 ## Supported Game Engines
 *   Godot
@@ -22,7 +22,7 @@ This project provides a backend framework for powering Non-Player Characters (NP
 *   Unreal Engine
 
 ## Architecture Overview
-The backend is a Go-based HTTP server. It receives requests from game engines, processes them through NPC logic modules, interacts with a configured Large Language Model (via the `LLMProvider` interface), and can utilize a knowledge graph for enhanced NPC responses and actions. Key interactions include NPC perception of surroundings, state updates, and LLM-driven actions which can involve tool usage.
+The backend is a Go-based server that communicates via Unix domain sockets. It receives requests from game engines, processes them through NPC logic modules, interacts with a configured Large Language Model (via the `LLMProvider` interface), and can utilize a knowledge graph for enhanced NPC responses and actions. Key interactions include NPC perception of surroundings, state updates, and LLM-driven actions which can involve tool usage.
 
 (Further details or a diagram could be added here if desired)
 
@@ -48,7 +48,7 @@ The backend is a Go-based HTTP server. It receives requests from game engines, p
     Create a `.env` file in the root of the project or set the environment variables directly. See the "Environment Variables" section for details.
     A minimal `.env` for Ollama might look like:
     ```env
-    PORT=8080
+    SOCKET_PATH=/tmp/llm-npc-backend.sock
     OLLAMA_MODEL=qwen3:1.7b # Or your preferred Ollama model
     LOG_LEVEL=info
     ```
@@ -60,13 +60,13 @@ The backend is a Go-based HTTP server. It receives requests from game engines, p
     ```bash
     ./backend # Or the path to your built executable
     ```
-    The server should start, typically on port 8080.
+    The server will start listening on the Unix socket (default: `/tmp/llm-npc-backend.sock`).
 
 ## Environment Variables
 The following environment variables are used for configuration. You can set them directly or place them in a `.env` file in the project root.
 
-*   `PORT`: The port on which the server will listen.
-    *   Default: `8080`
+*   `SOCKET_PATH`: The Unix socket path where the server will listen.
+    *   Default: `/tmp/llm-npc-backend.sock`
 *   `OLLAMA_MODEL`: Specifies the model to be used with the Ollama provider.
     *   Default: `qwen3:1.7b`
     *   Example: `llama3:latest`, `mistral:latest`
@@ -80,9 +80,10 @@ The following environment variables are used for configuration. You can set them
     *   Default: `info`
 
 ## Usage / API Endpoints
-The primary interaction with the backend is via its HTTP API.
+The primary interaction with the backend is via Unix socket communication using HTTP protocol.
 
 *   **`GET /`**: Root endpoint. Returns a simple message indicating the backend is running.
 *   **`GET /health`**: Health check endpoint. Returns `pong` with a 200 OK status if the server is healthy.
+*   **`GET /npc`**: Mock NPC endpoint for testing LLM integration (temporary).
 
-**(NPC interaction endpoints like `/npc/{npc_id}/act` or `/chat` are TBD or need to be located/defined. This section will be updated once those are clarified.)**
+For comprehensive testing instructions including curl commands, socket verification, and debugging tips, see the [Testing Guide](./TESTING_GUIDE.md).

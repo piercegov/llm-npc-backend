@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Go-based HTTP backend for powering Non-Player Characters (NPCs) in video games using Large Language Models. The framework is designed to be compatible with popular game engines (Godot, Unity, Unreal Engine).
+This is a Go-based backend for powering Non-Player Characters (NPCs) in video games using Large Language Models. The framework uses Unix domain sockets for efficient IPC communication and is designed to be compatible with popular game engines (Godot, Unity, Unreal Engine).
 
 ## Development Commands
 
@@ -17,11 +17,12 @@ This is a Go-based HTTP backend for powering Non-Player Characters (NPCs) in vid
 - **Run all tests**: `go test ./...`
 - **Run specific package tests**: `go test ./internal/api`
 - **Run tests with verbose output**: `go test -v ./...`
+- **Unix socket testing**: See [TESTING_GUIDE.md](./TESTING_GUIDE.md) for comprehensive testing instructions
 
 ## Architecture
 
 ### Core Modules
-- **`cmd/backend/main.go`**: HTTP server entry point with basic health check and root endpoints
+- **`cmd/backend/main.go`**: Unix socket server entry point with basic health check and root endpoints
 - **`internal/npc/`**: Core NPC logic with tick-based action system (`ActForTick`)
 - **`internal/llm/`**: LLM provider interface and implementations (currently Ollama)
 - **`internal/api/`**: HTTP middleware, error handling, and request tracing
@@ -43,7 +44,7 @@ This is a Go-based HTTP backend for powering Non-Player Characters (NPCs) in vid
 ## Configuration
 
 Environment variables (can be set in `.env` file):
-- `PORT`: Server port (default: 8080)
+- `SOCKET_PATH`: Unix socket path (default: /tmp/llm-npc-backend.sock)
 - `OLLAMA_MODEL`: Ollama model to use (default: qwen3:1.7b)
 - `CEREBRAS_API_KEY`: Cerebras API key (optional)
 - `CEREBRAS_BASE_URL`: Cerebras API base URL (default: https://api.cerebras.ai)
@@ -63,7 +64,7 @@ Environment variables (can be set in `.env` file):
 llm-npc-backend/
 ├── cmd/
 │   └── backend/
-│       └── main.go              # HTTP server entry point, route definitions, handlers
+│       └── main.go              # Unix socket server entry point, route definitions, handlers
 ├── internal/                    # Private application code (not importable by other projects)
 │   ├── api/
 │   │   ├── errors.go           # Standardized error responses and error codes
@@ -93,7 +94,7 @@ llm-npc-backend/
 ### Module Responsibilities
 
 #### `cmd/backend/main.go`
-- HTTP server initialization and configuration
+- Unix socket server initialization and configuration
 - Route definitions and handler setup
 - Middleware application
 - Currently contains mock NPC handler for testing
@@ -131,7 +132,7 @@ llm-npc-backend/
 ### Key Design Patterns
 
 1. **Interface-based Design**: LLM providers implement a common interface for easy swapping
-2. **Middleware Chain**: HTTP concerns handled through composable middleware
+2. **Middleware Chain**: Request/response concerns handled through composable middleware
 3. **Structured Logging**: Consistent log format with contextual information
 4. **Environment-based Config**: All configuration through environment variables
 5. **Tick-based NPCs**: Game loop compatible design for NPC actions

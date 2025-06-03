@@ -62,6 +62,19 @@ func RequestTracingMiddleware(next http.Handler) http.Handler {
 
 		// Record start time
 		startTime := time.Now()
+		
+		// Check if client sent a timestamp header
+		clientTimestamp := r.Header.Get("X-Client-Timestamp")
+		if clientTimestamp != "" {
+			if clientTime, err := time.Parse(time.RFC3339Nano, clientTimestamp); err == nil {
+				networkLatency := startTime.Sub(clientTime)
+				logging.Debug("Network latency measured",
+					"request_id", requestID,
+					"network_latency_ms", networkLatency.Milliseconds(),
+					"network_latency_us", networkLatency.Microseconds(),
+				)
+			}
+		}
 
 		// Log incoming request
 		logging.Info("Request started",
@@ -83,6 +96,10 @@ func RequestTracingMiddleware(next http.Handler) http.Handler {
 
 		// Calculate request duration
 		duration := time.Since(startTime)
+
+		// Add timing headers to response
+		w.Header().Set("X-Server-Timestamp", startTime.Format(time.RFC3339Nano))
+		w.Header().Set("X-Processing-Time-Ms", fmt.Sprintf("%d", duration.Milliseconds()))
 
 		// Log request completion with status code and duration
 		if ww.statusCode >= 400 {
