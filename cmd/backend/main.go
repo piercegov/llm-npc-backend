@@ -110,6 +110,19 @@ func main() {
 		})
 	})
 
+	// Define the console handler for reading scratchpads
+	consoleHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get all scratchpads from storage
+		allScratchpads := scratchpadStorage.GetAllScratchpads()
+		
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"command": "read_scratchpads",
+			"success": true,
+			"data":    allScratchpads,
+		})
+	})
+
 	// Apply middleware to handlers
 	http.Handle("/", api.ApplyDefaultMiddleware(
 		api.WithMethodValidation(rootHandler, "GET"),
@@ -121,6 +134,10 @@ func main() {
 
 	http.Handle("/npc", api.ApplyDefaultMiddleware(
 		api.WithMethodValidation(npcHandler, "GET"),
+	))
+
+	http.Handle("/console/read_scratchpads", api.ApplyDefaultMiddleware(
+		api.WithMethodValidation(consoleHandler, "GET"),
 	))
 
 	// Create Unix socket listener

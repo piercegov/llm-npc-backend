@@ -2,8 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"image/color"
+	"net"
+	"net/http"
 	"os/exec"
 	"strings"
 	"time"
@@ -19,6 +22,7 @@ import (
 type LogViewer struct {
 	logContainer *fyne.Container
 	searchBar    *widget.Entry
+	consoleBar   *widget.Entry
 	logBinding   binding.String
 	allLogs      []string
 	cmd          *exec.Cmd
@@ -61,6 +65,11 @@ func (lv *LogViewer) CreateUI() *fyne.Container {
 	lv.searchBar.OnChanged = lv.searchLogs
 	lv.searchBar.Resize(fyne.NewSize(600, 40))
 
+	lv.consoleBar = widget.NewEntry()
+	lv.consoleBar.SetPlaceHolder("Console command (e.g., 'read_scratchpads')...")
+	lv.consoleBar.OnSubmitted = lv.executeConsoleCommand
+	lv.consoleBar.Resize(fyne.NewSize(600, 40))
+
 	clearBtn := widget.NewButton("Clear Logs", lv.clearLogs)
 
 	toolbar := container.NewBorder(
@@ -68,11 +77,16 @@ func (lv *LogViewer) CreateUI() *fyne.Container {
 		lv.searchBar,
 	)
 
+	consolebar := container.NewBorder(
+		nil, nil, widget.NewLabel("Console:"), nil,
+		lv.consoleBar,
+	)
+
 	logScroll := container.NewScroll(lv.logContainer)
-	logScroll.SetMinSize(fyne.NewSize(900, 600))
+	logScroll.SetMinSize(fyne.NewSize(900, 550))
 
 	return container.NewBorder(
-		toolbar,
+		container.NewVBox(toolbar, consolebar),
 		nil,
 		nil,
 		nil,
@@ -220,4 +234,75 @@ func (lv *LogViewer) filterLogs(searchTerm string) []string {
 func (lv *LogViewer) clearLogs() {
 	lv.allLogs = make([]string, 0)
 	lv.updateDisplay()
+}
+
+func (lv *LogViewer) executeConsoleCommand(command string) {
+	lv.appendLog(fmt.Sprintf("> %s", command))
+
+	switch command {
+	case "read_scratchpads":
+		lv.readScratchpads()
+	default:
+		lv.appendLog(fmt.Sprintf("Unknown command: %s", command))
+	}
+
+	lv.consoleBar.SetText("")
+}
+
+func (lv *LogViewer) readScratchpads() {
+	socketPath := "/tmp/llm-npc-backend.sock"
+
+	// Create HTTP client that uses Unix domain socket
+	client := &http.Client{
+		Transport: &http.Transport{
+			Dial: func(network, addr string) (net.Conn, error) {
+				return net.Dial("unix", socketPath)
+			},
+		},
+	}
+
+	// Make request to console endpoint
+	resp, err := client.Get("http://unix/console/read_scratchpads")
+	if err != nil {
+		lv.appendLog(fmt.Sprintf("Failed to read scratchpads: %v", err))
+		return
+	}
+	defer resp.Body.Close()
+
+	// Parse response
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		lv.appendLog(fmt.Sprintf("Failed to parse response: %v", err))
+		return
+	}
+
+	// Display results
+	if success, ok := result["success"].(bool); ok && success {
+		if data, ok := result["data"].(map[string]interface{}); ok {
+			if len(data) == 0 {
+				lv.appendLog("No scratchpads found")
+			} else {
+				lv.appendLog(fmt.Sprintf("Found %d NPCs with scratchpads:", len(data)))
+				for npcID, npcData := range data {
+					if npcInfo, ok := npcData.(map[string]interface{}); ok {
+						count := npcInfo["count"].(float64)
+						lv.appendLog(fmt.Sprintf("  %s: %d entries", npcID, int(count)))
+
+						if entries, ok := npcInfo["entries"].([]interface{}); ok {
+							for _, entry := range entries {
+								if entryMap, ok := entry.(map[string]interface{}); ok {
+									key := entryMap["key"].(string)
+									value := entryMap["value"].(string)
+									timestamp := entryMap["timestamp"].(string)
+									lv.appendLog(fmt.Sprintf("    %s: %s (at %s)", key, value, timestamp))
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	} else {
+		lv.appendLog("Failed to read scratchpads")
+	}
 }

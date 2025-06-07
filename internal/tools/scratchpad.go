@@ -106,6 +106,37 @@ func RegisterScratchpadTools(registry *ToolRegistry, storage *ScratchpadStorage)
 	return nil
 }
 
+// GetAllScratchpads returns all scratchpads for admin/debug purposes
+func (s *ScratchpadStorage) GetAllScratchpads() map[string]map[string]interface{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	
+	result := make(map[string]map[string]interface{})
+	
+	for npcID, scratchpad := range s.storage {
+		scratchpad.mu.RLock()
+		
+		npcData := make(map[string]interface{})
+		entries := make([]map[string]interface{}, 0, len(scratchpad.Entries))
+		
+		for key, entry := range scratchpad.Entries {
+			entries = append(entries, map[string]interface{}{
+				"key":       key,
+				"value":     entry.Value,
+				"timestamp": entry.Timestamp.Format(time.RFC3339),
+			})
+		}
+		
+		npcData["entries"] = entries
+		npcData["count"] = len(entries)
+		result[npcID] = npcData
+		
+		scratchpad.mu.RUnlock()
+	}
+	
+	return result
+}
+
 // getOrCreateScratchpad returns the scratchpad for an NPC, creating it if it doesn't exist
 func (s *ScratchpadStorage) getOrCreateScratchpad(npcID string) *NPCScratchpad {
 	s.mu.Lock()
