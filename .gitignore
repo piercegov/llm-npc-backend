@@ -5,5 +5,5 @@ go.sum
 *.log
 
 backend
-logviewer
+/logviewer
 .env
