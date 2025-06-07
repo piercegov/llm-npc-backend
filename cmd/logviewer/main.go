@@ -391,6 +391,11 @@ func (cv *CLIViewer) printLogWithPrompt(message string) {
 	}
 }
 
+func (cv *CLIViewer) printCommandResponse(message string) {
+	timestamp := time.Now().Format("15:04:05")
+	cv.printLogWithPrompt(fmt.Sprintf("[%s] [CONSOLE] %s", timestamp, message))
+}
+
 func (cv *CLIViewer) startBackendAndStream() {
 	// Change to the project directory
 	projectDir := "/Users/piercegovernale/Documents/llm-npc-backend"
@@ -463,8 +468,8 @@ func (cv *CLIViewer) executeCommand(command string) {
 	case "":
 		// Empty command, do nothing
 	default:
-		cv.printLogWithPrompt(fmt.Sprintf("Unknown command: %s", command))
-		cv.printLogWithPrompt("Available commands: read_scratchpads, quit")
+		cv.printCommandResponse(fmt.Sprintf("Unknown command: %s", command))
+		cv.printCommandResponse("Available commands: read_scratchpads, quit")
 	}
 }
 
@@ -483,7 +488,7 @@ func (cv *CLIViewer) readScratchpads() {
 	// Make request to console endpoint
 	resp, err := client.Get("http://unix/console/read_scratchpads")
 	if err != nil {
-		cv.printLogWithPrompt(fmt.Sprintf("Failed to read scratchpads: %v", err))
+		cv.printCommandResponse(fmt.Sprintf("Failed to read scratchpads: %v", err))
 		return
 	}
 	defer resp.Body.Close()
@@ -491,7 +496,7 @@ func (cv *CLIViewer) readScratchpads() {
 	// Parse response
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		cv.printLogWithPrompt(fmt.Sprintf("Failed to parse response: %v", err))
+		cv.printCommandResponse(fmt.Sprintf("Failed to parse response: %v", err))
 		return
 	}
 	
@@ -499,13 +504,13 @@ func (cv *CLIViewer) readScratchpads() {
 	if success, ok := result["success"].(bool); ok && success {
 		if data, ok := result["data"].(map[string]interface{}); ok {
 			if len(data) == 0 {
-				cv.printLogWithPrompt("No scratchpads found")
+				cv.printCommandResponse("No scratchpads found")
 			} else {
-				cv.printLogWithPrompt(fmt.Sprintf("Found %d NPCs with scratchpads:", len(data)))
+				cv.printCommandResponse(fmt.Sprintf("Found %d NPCs with scratchpads:", len(data)))
 				for npcID, npcData := range data {
 					if npcInfo, ok := npcData.(map[string]interface{}); ok {
 						count := npcInfo["count"].(float64)
-						cv.printLogWithPrompt(fmt.Sprintf("  %s: %d entries", npcID, int(count)))
+						cv.printCommandResponse(fmt.Sprintf("  %s: %d entries", npcID, int(count)))
 						
 						if entries, ok := npcInfo["entries"].([]interface{}); ok {
 							for _, entry := range entries {
@@ -513,7 +518,7 @@ func (cv *CLIViewer) readScratchpads() {
 									key := entryMap["key"].(string)
 									value := entryMap["value"].(string)
 									timestamp := entryMap["timestamp"].(string)
-									cv.printLogWithPrompt(fmt.Sprintf("    %s: %s (at %s)", key, value, timestamp))
+									cv.printCommandResponse(fmt.Sprintf("    %s: %s (at %s)", key, value, timestamp))
 								}
 							}
 						}
@@ -522,6 +527,6 @@ func (cv *CLIViewer) readScratchpads() {
 			}
 		}
 	} else {
-		cv.printLogWithPrompt("Failed to read scratchpads")
+		cv.printCommandResponse("Failed to read scratchpads")
 	}
 }
