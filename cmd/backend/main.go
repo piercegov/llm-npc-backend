@@ -39,11 +39,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize NPC storage and handlers
+	npcStorage := npc.NewNPCStorage()
+	npcHandlers := npc.NewNPCHandlers(npcStorage, toolRegistry)
+
 	logging.Info("Starting LLM NPC Backend server",
 		"socket", config.SocketPath,
 		"log_level", config.LogLevel,
 		"cerebras_base_url", config.BaseUrl,
-		"tools_count", len(toolRegistry.GetTools()))
+		"tools_count", len(toolRegistry.GetTools()),
+		"npc_endpoints", "POST /npc/register, POST /npc/act, GET /npc/list, GET /npc/{id}, DELETE /npc/{id}")
 
 	// Define the root handler
 	rootHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +143,35 @@ func main() {
 
 	http.Handle("/console/read_scratchpads", api.ApplyDefaultMiddleware(
 		api.WithMethodValidation(consoleHandler, "GET"),
+	))
+
+	// NPC management endpoints
+	http.Handle("/npc/register", api.ApplyDefaultMiddleware(
+		api.WithMethodValidation(http.HandlerFunc(npcHandlers.RegisterHandler), "POST"),
+	))
+
+	http.Handle("/npc/act", api.ApplyDefaultMiddleware(
+		api.WithMethodValidation(http.HandlerFunc(npcHandlers.ActHandler), "POST"),
+	))
+
+	http.Handle("/npc/list", api.ApplyDefaultMiddleware(
+		api.WithMethodValidation(http.HandlerFunc(npcHandlers.ListHandler), "GET"),
+	))
+
+	// NPC-specific endpoints (GET and DELETE /npc/{id})
+	npcGetDeleteHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			npcHandlers.GetHandler(w, r)
+		case "DELETE":
+			npcHandlers.DeleteHandler(w, r)
+		default:
+			api.WriteErrorResponse(w, http.StatusMethodNotAllowed, "Method not allowed", api.ErrCodeMethodNotAllowed, nil, r.Context())
+		}
+	})
+
+	http.Handle("/npc/", api.ApplyDefaultMiddleware(
+		api.WithMethodValidation(npcGetDeleteHandler, "GET", "DELETE"),
 	))
 
 	// Create Unix socket listener

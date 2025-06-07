@@ -53,9 +53,21 @@ Environment variables (can be set in `.env` file):
   - Set to `debug` to see full LLM prompts and responses in logs
 
 ## Current API Endpoints
+
+### Core Endpoints
 - `GET /`: Root endpoint returning "LLM NPC Backend is running!"
 - `GET /health`: Health check returning "pong"
+
+### NPC Management Endpoints (Game Engine Integration)
+- `POST /npc/register`: Register a new NPC with name and background story, returns NPC ID
+- `POST /npc/act`: Execute a tick for a specific NPC using NPCTickInput data
+- `GET /npc/list`: List all registered NPCs with their basic information
+- `GET /npc/{id}`: Get detailed information for a specific NPC
+- `DELETE /npc/{id}`: Remove an NPC from the system
+
+### Development/Testing Endpoints
 - `GET /npc`: Mock NPC endpoint demonstrating LLM integration (temporary testing endpoint)
+- `GET /console/read_scratchpads`: Development console for reading scratchpad data
 
 ## Project Structure Guide
 
@@ -83,9 +95,11 @@ llm-npc-backend/
 │   ├── logging/
 │   │   └── logger.go           # Structured logging setup using slog
 │   ├── npc/
-│   │   ├── npc.go              # Core NPC logic, ActForTick, prompt parsing
+│   │   ├── npc.go              # Core NPC logic, ActForTick, prompt parsing, API request/response types
 │   │   ├── npc_test.go         # NPC unit tests
-│   │   └── prompts.go          # NPC system prompts and templates
+│   │   ├── prompts.go          # NPC system prompts and templates
+│   │   ├── storage.go          # In-memory NPC storage with UUID-based identification
+│   │   └── handlers.go         # HTTP handlers for NPC management endpoints
 │   └── store/                  # (Placeholder for future data persistence)
 ├── pkg/                        # Public packages (can be imported by other projects)
 │   └── model/                  # (Placeholder for shared data models)
@@ -125,12 +139,21 @@ llm-npc-backend/
 - **logger.go**: Configures structured logging with different log levels
 
 #### `internal/npc/`
-- **npc.go**: Core NPC behavior logic
+- **npc.go**: Core NPC behavior logic and API data structures
   - `ActForTick`: Main NPC action loop
   - Surroundings and knowledge graph parsing
   - Event tracking with `NPCTickEvent` for temporal awareness
   - LLM interaction with structured XML prompts
   - `ParseEvents`: Formats events since last tick in XML
+  - API request/response types for game engine integration
+- **storage.go**: Thread-safe in-memory NPC storage system
+  - UUID-based NPC identification
+  - CRUD operations with mutex protection
+  - Registration, retrieval, listing, and deletion of NPCs
+- **handlers.go**: HTTP handlers for NPC management endpoints
+  - `POST /npc/register`: Register new NPCs
+  - `POST /npc/act`: Execute NPC ticks with full input processing
+  - `GET /npc/list`, `GET /npc/{id}`, `DELETE /npc/{id}`: Management operations
 - **prompts.go**: System prompt templates
   - Instructs LLMs to use `<thinking>` tags for internal reasoning
   - Ensures clean separation of thoughts vs. speech/actions

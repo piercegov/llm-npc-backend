@@ -10,6 +10,61 @@ import (
 	"github.com/piercegov/llm-npc-backend/internal/tools"
 )
 
+// Request/Response types for API endpoints
+
+// NPCRegisterRequest represents the request to register a new NPC
+type NPCRegisterRequest struct {
+	Name            string `json:"name" binding:"required"`
+	BackgroundStory string `json:"background_story" binding:"required"`
+}
+
+// NPCRegisterResponse represents the response from registering an NPC
+type NPCRegisterResponse struct {
+	NPCID   string `json:"npc_id"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// NPCActRequest represents the request to make an NPC act
+type NPCActRequest struct {
+	NPCID string `json:"npc_id" binding:"required"`
+	NPCTickInput
+}
+
+// NPCActResponse represents the response from an NPC action
+type NPCActResponse struct {
+	NPCID string `json:"npc_id"`
+	NPCTickResult
+}
+
+// NPCListResponse represents the response from listing NPCs
+type NPCListResponse struct {
+	NPCs    map[string]NPCInfo `json:"npcs"`
+	Success bool               `json:"success"`
+	Count   int                `json:"count"`
+}
+
+// NPCInfo represents basic NPC information for listing
+type NPCInfo struct {
+	Name            string `json:"name"`
+	BackgroundStory string `json:"background_story"`
+}
+
+// NPCGetResponse represents the response from getting a specific NPC
+type NPCGetResponse struct {
+	NPCID   string  `json:"npc_id"`
+	NPC     NPCInfo `json:"npc"`
+	Success bool    `json:"success"`
+	Message string  `json:"message,omitempty"`
+}
+
+// NPCDeleteResponse represents the response from deleting an NPC
+type NPCDeleteResponse struct {
+	NPCID   string `json:"npc_id"`
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
 type NPCTickResult struct {
 	LLMResponse   string
 	ToolsUsed     []ToolResult
