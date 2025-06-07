@@ -12,9 +12,9 @@ import (
 	"github.com/piercegov/llm-npc-backend/internal/api"
 	"github.com/piercegov/llm-npc-backend/internal/cfg"
 	"github.com/piercegov/llm-npc-backend/internal/kg"
-	"github.com/piercegov/llm-npc-backend/internal/llm"
 	"github.com/piercegov/llm-npc-backend/internal/logging"
 	"github.com/piercegov/llm-npc-backend/internal/npc"
+	"github.com/piercegov/llm-npc-backend/internal/tools"
 )
 
 func main() {
@@ -29,10 +29,21 @@ func main() {
 	// Remove any existing socket file
 	os.Remove(config.SocketPath)
 
+	// Initialize tool registry and scratchpad storage
+	toolRegistry := tools.NewToolRegistry()
+	scratchpadStorage := tools.NewScratchpadStorage()
+
+	// Register scratchpad tools
+	if err := tools.RegisterScratchpadTools(toolRegistry, scratchpadStorage); err != nil {
+		logging.Error("Failed to register scratchpad tools", "error", err)
+		os.Exit(1)
+	}
+
 	logging.Info("Starting LLM NPC Backend server",
 		"socket", config.SocketPath,
 		"log_level", config.LogLevel,
-		"cerebras_base_url", config.BaseUrl)
+		"cerebras_base_url", config.BaseUrl,
+		"tools_count", len(toolRegistry.GetTools()))
 
 	// Define the root handler
 	rootHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,24 +81,20 @@ func main() {
 			KnowledgeGraph:      kg.KnowledgeGraph{},
 			NPCState:            npc.NPCState{},
 			KnowledgeGraphDepth: 0,
-			Events:              []npc.NPCTickEvent{}, // Empty events to see LLM behavior
+			Events: []npc.NPCTickEvent{
+				{
+					EventType:        "new_customer",
+					EventDescription: "The hooded stranger entered the tavern just moments ago and ordered a whiskey",
+				},
+			},
+			ToolRegistry: toolRegistry, // Add the tool registry
 		}
 
-		// Parse the input to generate prompt
-		surroundingsString, _ := npc.ParseSurroundings(mockInput)
-		knowledgeGraphString, _ := npc.ParseKnowledgeGraph(mockInput)
-		eventsString, _ := npc.ParseEvents(mockInput)
+		// Use ActForTick which now returns detailed results
+		result := mockNPC.ActForTick(mockInput)
 
-		systemPrompt := npc.BuildNPCSystemPrompt(mockNPC.Name, mockNPC.BackgroundStory)
-		llmRequest := llm.LLMRequest{
-			SystemPrompt: systemPrompt,
-			Prompt:       surroundingsString + "\n" + knowledgeGraphString + "\n" + eventsString,
-		}
-
-		ollama := llm.NewOllama("11434")
-		response, err := ollama.Generate(llmRequest)
-		if err != nil {
-			api.WriteErrorResponse(w, http.StatusInternalServerError, "Failed to generate NPC response", api.ErrCodeInternalServer, nil, r.Context())
+		if !result.Success {
+			api.WriteErrorResponse(w, http.StatusInternalServerError, result.ErrorMessage, api.ErrCodeInternalServer, nil, r.Context())
 			return
 		}
 
@@ -97,7 +104,9 @@ func main() {
 			"background_story": mockNPC.BackgroundStory,
 			"surroundings":     mockInput.Surroundings,
 			"events":           mockInput.Events,
-			"llm_response":     response.Response,
+			"llm_response":     result.LLMResponse,
+			"tools_used":       result.ToolsUsed,
+			"tools_available":  len(toolRegistry.GetTools()),
 		})
 	})
 

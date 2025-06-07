@@ -112,20 +112,17 @@ func makeWeatherTool() Tool {
 	return Tool{
 		Name:        "get_current_weather",
 		Description: "Get the current weather for a location",
-		Parameters: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"location": map[string]interface{}{
-					"type":        "string",
-					"description": "The location to get the weather for, e.g. San Francisco, CA",
-				},
-				"format": map[string]interface{}{
-					"type":        "string",
-					"description": "The format to return the weather in, e.g. 'celsius' or 'fahrenheit'",
-					"enum":        []string{"celsius", "fahrenheit"},
-				},
+		Parameters: map[string]ToolParameter{
+			"location": {
+				Type:        TypeString,
+				Description: "The location to get the weather for, e.g. San Francisco, CA",
+				Required:    true,
 			},
-			"required": []string{"location", "format"},
+			"format": {
+				Type:        TypeString,
+				Description: "The format to return the weather in, e.g. 'celsius' or 'fahrenheit'",
+				Required:    true,
+			},
 		},
 	}
 }

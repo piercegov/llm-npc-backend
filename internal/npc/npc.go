@@ -1,12 +1,29 @@
 package npc
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/piercegov/llm-npc-backend/internal/kg"
 	"github.com/piercegov/llm-npc-backend/internal/llm"
 	"github.com/piercegov/llm-npc-backend/internal/logging"
+	"github.com/piercegov/llm-npc-backend/internal/tools"
 )
+
+type NPCTickResult struct {
+	LLMResponse   string
+	ToolsUsed     []ToolResult
+	Success       bool
+	ErrorMessage  string
+}
+
+type ToolResult struct {
+	ToolName  string
+	Args      map[string]interface{}
+	Success   bool
+	Response  string
+	Error     string
+}
 
 // Maybe this should be related to the knowledge graph?
 type NPCTickEvent struct {
@@ -20,6 +37,7 @@ type NPCTickInput struct {
 	NPCState            NPCState
 	KnowledgeGraphDepth int
 	Events              []NPCTickEvent
+	ToolRegistry        *tools.ToolRegistry // Optional: if nil, no tools available
 }
 type NPC struct {
 	Name            string
@@ -36,18 +54,21 @@ type Surrounding struct {
 	Description string
 }
 
-func (n *NPC) ActForTick(input NPCTickInput) {
+func (n *NPC) ActForTick(input NPCTickInput) NPCTickResult {
 	surroundingsString, err := ParseSurroundings(input)
 	if err != nil {
 		logging.Error("Error parsing surroundings: %v", err)
+		return NPCTickResult{Success: false, ErrorMessage: fmt.Sprintf("Error parsing surroundings: %v", err)}
 	}
 	knowledgeGraphString, err := ParseKnowledgeGraph(input)
 	if err != nil {
 		logging.Error("Error parsing knowledge graph: %v", err)
+		return NPCTickResult{Success: false, ErrorMessage: fmt.Sprintf("Error parsing knowledge graph: %v", err)}
 	}
 	eventsString, err := ParseEvents(input)
 	if err != nil {
 		logging.Error("Error parsing events: %v", err)
+		return NPCTickResult{Success: false, ErrorMessage: fmt.Sprintf("Error parsing events: %v", err)}
 	}
 
 	systemPrompt := BuildNPCSystemPrompt(n.Name, n.BackgroundStory)
@@ -66,12 +87,59 @@ func (n *NPC) ActForTick(input NPCTickInput) {
 		Prompt:       surroundingsString + "\n" + knowledgeGraphString + "\n" + eventsString,
 	}
 
+	// Add tools if available
+	if input.ToolRegistry != nil {
+		llmRequest.Tools = input.ToolRegistry.GetTools()
+	}
+
 	llmResponse, err := CallLLM(llmRequest)
 	if err != nil {
 		logging.Error("Error calling LLM: %v", err)
+		return NPCTickResult{Success: false, ErrorMessage: fmt.Sprintf("Error calling LLM: %v", err)}
 	}
 
-	fmt.Println(llmResponse.Response)
+	var toolResults []ToolResult
+
+	// Process any tool uses
+	if len(llmResponse.ToolUses) > 0 && input.ToolRegistry != nil {
+		ctx := context.Background()
+		for _, toolUse := range llmResponse.ToolUses {
+			logging.Info("NPC using tool",
+				"npc_name", n.Name,
+				"tool_name", toolUse.ToolName,
+				"args", toolUse.ToolArgs,
+			)
+			
+			result, err := input.ToolRegistry.ExecuteTool(ctx, n.Name, toolUse)
+			
+			toolResult := ToolResult{
+				ToolName: toolUse.ToolName,
+				Args:     toolUse.ToolArgs,
+				Success:  result.Success,
+				Response: result.Message,
+			}
+			
+			if err != nil {
+				logging.Error("Error executing tool: %v", err)
+				toolResult.Success = false
+				toolResult.Error = err.Error()
+			} else {
+				logging.Info("Tool execution completed",
+					"tool_name", toolUse.ToolName,
+					"success", result.Success,
+					"message", result.Message,
+				)
+			}
+			
+			toolResults = append(toolResults, toolResult)
+		}
+	}
+
+	return NPCTickResult{
+		LLMResponse: llmResponse.Response,
+		ToolsUsed:   toolResults,
+		Success:     true,
+	}
 }
 
 func CallLLM(input llm.LLMRequest) (llm.LLMResponse, error) {

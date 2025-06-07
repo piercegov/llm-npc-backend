@@ -61,14 +61,36 @@ func NewOllama(ollamaPort string) *Ollama {
 
 
 func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
-	// Transform common.Tool to Ollama-specific tool format
+	// Transform Tool to Ollama-specific tool format
 	var formattedTools []ollamaTool
-	if len(request.Tools) > 0 { // Check if there are any tools to format
+	if len(request.Tools) > 0 {
 		formattedTools = make([]ollamaTool, len(request.Tools))
-		for i, t := range request.Tools { // t is of type common.Tool (or the llm.Tool type from this package)
+		for i, t := range request.Tools {
+			// Convert our Tool format to Ollama's expected format
+			params := map[string]interface{}{
+				"type": "object",
+				"properties": make(map[string]interface{}),
+				"required": []string{},
+			}
+			
+			// Convert parameters
+			for name, param := range t.Parameters {
+				params["properties"].(map[string]interface{})[name] = map[string]interface{}{
+					"type":        string(param.Type),
+					"description": param.Description,
+				}
+				if param.Required {
+					params["required"] = append(params["required"].([]string), name)
+				}
+			}
+			
 			formattedTools[i] = ollamaTool{
-				Type:     "function", // Assuming all tools are functions for Ollama
-				Function: ollamaToolFunctionDetails(t),
+				Type: "function",
+				Function: ollamaToolFunctionDetails{
+					Name:        t.Name,
+					Description: t.Description,
+					Parameters:  params,
+				},
 			}
 		}
 	}

@@ -1,5 +1,16 @@
 package llm
 
+// ParameterType represents the type of a tool parameter
+type ParameterType string
+
+const (
+	TypeString  ParameterType = "string"
+	TypeNumber  ParameterType = "number"
+	TypeBoolean ParameterType = "boolean"
+	TypeObject  ParameterType = "object"
+	TypeArray   ParameterType = "array" // TODO: needs a secondary type for items
+)
+
 type LLMProvider interface {
 	Generate(request LLMRequest) (LLMResponse, error)
 }
@@ -24,5 +35,11 @@ type LLMRequest struct {
 type Tool struct {
 	Name        string
 	Description string
-	Parameters  map[string]interface{}
+	Parameters  map[string]ToolParameter
+}
+
+type ToolParameter struct {
+	Type        ParameterType
+	Description string
+	Required    bool
 }
