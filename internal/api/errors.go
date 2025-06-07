@@ -31,13 +31,13 @@ const (
 
 // Map HTTP status codes to error codes
 var statusToErrorCode = map[int]string{
-	http.StatusBadRequest:          ErrCodeBadRequest,
-	http.StatusNotFound:            ErrCodeNotFound,
-	http.StatusMethodNotAllowed:    ErrCodeMethodNotAllowed,
+	http.StatusBadRequest:           ErrCodeBadRequest,
+	http.StatusNotFound:             ErrCodeNotFound,
+	http.StatusMethodNotAllowed:     ErrCodeMethodNotAllowed,
 	http.StatusUnsupportedMediaType: ErrCodeUnsupportedMedia,
-	http.StatusTooManyRequests:     ErrCodeRateLimit,
-	http.StatusInternalServerError: ErrCodeInternalServer,
-	http.StatusServiceUnavailable:  ErrCodeServiceUnavailable,
+	http.StatusTooManyRequests:      ErrCodeRateLimit,
+	http.StatusInternalServerError:  ErrCodeInternalServer,
+	http.StatusServiceUnavailable:   ErrCodeServiceUnavailable,
 }
 
 // contextKey is a custom type for context keys to avoid collisions
@@ -51,7 +51,7 @@ func GetRequestID(ctx context.Context) string {
 	if ctx == nil {
 		return ""
 	}
-	
+
 	if reqID, ok := ctx.Value(RequestIDKey).(string); ok {
 		return reqID
 	}
@@ -61,15 +61,15 @@ func GetRequestID(ctx context.Context) string {
 // LogRequestError logs an error with the request context and additional fields
 func LogRequestError(ctx context.Context, message string, err error, additionalFields ...any) {
 	fields := []any{"error", err}
-	
+
 	// Add request ID if available
 	if reqID := GetRequestID(ctx); reqID != "" {
 		fields = append(fields, "request_id", reqID)
 	}
-	
+
 	// Add any additional fields
 	fields = append(fields, additionalFields...)
-	
+
 	logging.Error(message, fields...)
 }
 
@@ -82,25 +82,25 @@ func WriteErrorResponse(w http.ResponseWriter, statusCode int, message string, c
 			code = ErrCodeInternalServer
 		}
 	}
-	
+
 	// Create error response
 	errorResp := ErrorResponse{
-		Error:     message,
-		Code:      code,
-		Details:   details,
+		Error:   message,
+		Code:    code,
+		Details: details,
 	}
-	
+
 	// Add request ID if available
 	if ctx != nil {
 		if reqID := GetRequestID(ctx); reqID != "" {
 			errorResp.RequestID = reqID
 		}
 	}
-	
+
 	// Set content type and status code
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	
+
 	// Write JSON response
 	encoder := json.NewEncoder(w)
 	if err := encoder.Encode(errorResp); err != nil {

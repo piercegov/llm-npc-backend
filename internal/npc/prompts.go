@@ -14,7 +14,7 @@ IMPORTANT INSTRUCTIONS:
 3. Stay in character at all times when speaking.
 4. Use tools when appropriate. If you want to speak, use the speak tool. If you want to remember something for later, use the scratchpad tools.
 
-For now, please use the scratchpad tool!!!! I'm testing it.
+For now, please use the scratchpad tool, then continue thinking. So, use the scratchpad tool, then the continue_thinking tool.
 `
 
 // BuildNPCSystemPrompt creates a system prompt for an NPC with the given name and background story.

@@ -3,6 +3,7 @@ package npc
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/piercegov/llm-npc-backend/internal/kg"
 	"github.com/piercegov/llm-npc-backend/internal/llm"
@@ -66,18 +67,26 @@ type NPCDeleteResponse struct {
 }
 
 type NPCTickResult struct {
-	LLMResponse   string
-	ToolsUsed     []ToolResult
-	Success       bool
-	ErrorMessage  string
+	Rounds       []InferenceRound
+	LLMResponse  string // Concatenated responses from all rounds
+	Success      bool
+	ErrorMessage string
+}
+
+type InferenceRound struct {
+	RoundNumber  int
+	LLMResponse  string
+	ToolsUsed    []ToolResult
+	Success      bool
+	ErrorMessage string
 }
 
 type ToolResult struct {
-	ToolName  string
-	Args      map[string]interface{}
-	Success   bool
-	Response  string
-	Error     string
+	ToolName string
+	Args     map[string]interface{}
+	Success  bool
+	Response string
+	Error    string
 }
 
 // Maybe this should be related to the knowledge graph?
@@ -110,6 +119,12 @@ type Surrounding struct {
 }
 
 func (n *NPC) ActForTick(input NPCTickInput) NPCTickResult {
+	return n.actForTickWithDepth(input, 0)
+}
+
+const maxThinkingDepth = 3
+
+func (n *NPC) actForTickWithDepth(input NPCTickInput, depth int) NPCTickResult {
 	surroundingsString, err := ParseSurroundings(input)
 	if err != nil {
 		logging.Error("Error parsing surroundings: %v", err)
@@ -131,6 +146,7 @@ func (n *NPC) ActForTick(input NPCTickInput) NPCTickResult {
 	// Log NPC action details
 	logging.Info("NPC ActForTick",
 		"npc_name", n.Name,
+		"depth", depth,
 		"surroundings_count", len(input.Surroundings),
 		"events_count", len(input.Events),
 		"knowledge_graph_nodes", len(input.KnowledgeGraph.Nodes),
@@ -164,16 +180,16 @@ func (n *NPC) ActForTick(input NPCTickInput) NPCTickResult {
 				"tool_name", toolUse.ToolName,
 				"args", toolUse.ToolArgs,
 			)
-			
+
 			result, err := input.ToolRegistry.ExecuteTool(ctx, n.Name, toolUse)
-			
+
 			toolResult := ToolResult{
 				ToolName: toolUse.ToolName,
 				Args:     toolUse.ToolArgs,
 				Success:  result.Success,
 				Response: result.Message,
 			}
-			
+
 			if err != nil {
 				logging.Error("Error executing tool: %v", err)
 				toolResult.Success = false
@@ -185,14 +201,104 @@ func (n *NPC) ActForTick(input NPCTickInput) NPCTickResult {
 					"message", result.Message,
 				)
 			}
-			
+
 			toolResults = append(toolResults, toolResult)
 		}
 	}
 
-	return NPCTickResult{
+	// Check if continue_thinking was used and we haven't exceeded depth limit
+	var usedContinueThinking bool
+	for _, toolUse := range llmResponse.ToolUses {
+		if toolUse.ToolName == "continue_thinking" {
+			usedContinueThinking = true
+			break
+		}
+	}
+
+	if usedContinueThinking && depth < maxThinkingDepth && input.ToolRegistry != nil {
+		logging.Info("NPC continuing thinking",
+			"npc_name", n.Name,
+			"current_depth", depth,
+		)
+
+		// Convert tool results to events for the next thinking round
+		var newEvents []NPCTickEvent
+		for _, toolResult := range toolResults {
+			eventType := "tool_execution"
+			if !toolResult.Success {
+				eventType = "tool_error"
+			}
+
+			description := fmt.Sprintf("Tool '%s' executed", toolResult.ToolName)
+			if toolResult.Response != "" {
+				description += fmt.Sprintf(" - Response: %s", toolResult.Response)
+			}
+			if toolResult.Error != "" {
+				description += fmt.Sprintf(" - Error: %s", toolResult.Error)
+			}
+
+			newEvents = append(newEvents, NPCTickEvent{
+				EventType:        eventType,
+				EventDescription: description,
+			})
+		}
+
+		// Create new input with tool results as events
+		continueInput := NPCTickInput{
+			Surroundings:        input.Surroundings,
+			KnowledgeGraph:      input.KnowledgeGraph,
+			NPCState:            input.NPCState,
+			KnowledgeGraphDepth: input.KnowledgeGraphDepth,
+			Events:              newEvents,
+			ToolRegistry:        input.ToolRegistry,
+		}
+
+		// Recursively call for continued thinking
+		continueResult := n.actForTickWithDepth(continueInput, depth+1)
+
+		// Create current round
+		currentRound := InferenceRound{
+			RoundNumber: depth + 1,
+			LLMResponse: llmResponse.Response,
+			ToolsUsed:   toolResults,
+			Success:     true,
+		}
+
+		// Combine rounds from current and recursive calls
+		allRounds := append([]InferenceRound{currentRound}, continueResult.Rounds...)
+
+		// Build concatenated response with inference markers
+		var concatenatedResponse strings.Builder
+		concatenatedResponse.WriteString(fmt.Sprintf("=== Inference %d ===\n%s", currentRound.RoundNumber, currentRound.LLMResponse))
+		if continueResult.LLMResponse != "" {
+			concatenatedResponse.WriteString("\n")
+			concatenatedResponse.WriteString(continueResult.LLMResponse)
+		}
+
+		return NPCTickResult{
+			Rounds:       allRounds,
+			LLMResponse:  concatenatedResponse.String(),
+			Success:      continueResult.Success,
+			ErrorMessage: continueResult.ErrorMessage,
+		}
+	}
+
+	// Base case - no continue_thinking used
+	currentRound := InferenceRound{
+		RoundNumber: depth + 1,
 		LLMResponse: llmResponse.Response,
 		ToolsUsed:   toolResults,
+		Success:     true,
+	}
+
+	response := llmResponse.Response
+	if depth > 0 {
+		response = fmt.Sprintf("=== Inference %d ===\n%s", currentRound.RoundNumber, llmResponse.Response)
+	}
+
+	return NPCTickResult{
+		Rounds:      []InferenceRound{currentRound},
+		LLMResponse: response,
 		Success:     true,
 	}
 }

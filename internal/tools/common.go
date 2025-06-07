@@ -24,12 +24,42 @@ type ToolRegistry struct {
 	handlers map[string]ToolHandler
 }
 
-// NewToolRegistry creates a new tool registry
+// NewToolRegistry creates a new tool registry with built-in tools
 func NewToolRegistry() *ToolRegistry {
-	return &ToolRegistry{
+	registry := &ToolRegistry{
 		tools:    make(map[string]llm.Tool),
 		handlers: make(map[string]ToolHandler),
 	}
+
+	// Register built-in continue_thinking tool
+	continueThinkingTool := llm.Tool{
+		Name:        "continue_thinking",
+		Description: "Signal that you want to continue thinking and processing after seeing tool results. Use this when you need to analyze tool outputs or make follow-up decisions.",
+		Parameters: map[string]llm.ToolParameter{
+			"reason": {
+				Type:        llm.TypeString,
+				Description: "Brief explanation of why you want to continue thinking",
+				Required:    false,
+			},
+		},
+	}
+
+	// Handler that just returns success - the actual logic is in ActForTick
+	continueThinkingHandler := func(ctx context.Context, npcID string, args map[string]interface{}) (ToolResult, error) {
+		reason := "No reason provided"
+		if r, ok := args["reason"].(string); ok {
+			reason = r
+		}
+		return ToolResult{
+			Success: true,
+			Message: fmt.Sprintf("Continuing thinking: %s", reason),
+		}, nil
+	}
+
+	registry.tools[continueThinkingTool.Name] = continueThinkingTool
+	registry.handlers[continueThinkingTool.Name] = continueThinkingHandler
+
+	return registry
 }
 
 // RegisterTool registers a tool with its handler
@@ -37,7 +67,7 @@ func (r *ToolRegistry) RegisterTool(tool llm.Tool, handler ToolHandler) error {
 	if _, exists := r.tools[tool.Name]; exists {
 		return fmt.Errorf("tool %s already registered", tool.Name)
 	}
-	
+
 	r.tools[tool.Name] = tool
 	r.handlers[tool.Name] = handler
 	return nil
@@ -61,7 +91,7 @@ func (r *ToolRegistry) ExecuteTool(ctx context.Context, npcID string, toolUse ll
 			Message: fmt.Sprintf("unknown tool: %s", toolUse.ToolName),
 		}, fmt.Errorf("unknown tool: %s", toolUse.ToolName)
 	}
-	
+
 	// Validate arguments match expected parameters
 	tool, _ := r.tools[toolUse.ToolName]
 	if err := validateArgs(tool, toolUse.ToolArgs); err != nil {
@@ -70,7 +100,7 @@ func (r *ToolRegistry) ExecuteTool(ctx context.Context, npcID string, toolUse ll
 			Message: err.Error(),
 		}, err
 	}
-	
+
 	return handler(ctx, npcID, toolUse.ToolArgs)
 }
 
@@ -84,15 +114,15 @@ func validateArgs(tool llm.Tool, args map[string]interface{}) error {
 			}
 		}
 	}
-	
+
 	// Check for unexpected parameters
 	for argName := range args {
 		if _, exists := tool.Parameters[argName]; !exists {
 			return fmt.Errorf("unexpected parameter: %s", argName)
 		}
 	}
-	
+
 	// TODO: Add type validation based on param.Type
-	
+
 	return nil
 }

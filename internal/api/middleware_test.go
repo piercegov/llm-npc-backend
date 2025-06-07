@@ -247,7 +247,7 @@ func TestChainMiddleware(t *testing.T) {
 
 	for i, v := range expected {
 		if executionOrder[i] != v {
-			t.Errorf("Expected execution order at position %d to be '%s', got '%s'", 
+			t.Errorf("Expected execution order at position %d to be '%s', got '%s'",
 				i, v, executionOrder[i])
 		}
 	}
@@ -262,7 +262,7 @@ func TestApplyDefaultMiddleware(t *testing.T) {
 		if requestID == "" {
 			t.Error("Expected request ID in context")
 		}
-		
+
 		// Trigger a panic to test recovery
 		panic("test panic in default middleware chain")
 	})
@@ -279,7 +279,7 @@ func TestApplyDefaultMiddleware(t *testing.T) {
 
 	// Should recover from panic and return 500
 	if rec.Code != http.StatusInternalServerError {
-		t.Errorf("Expected status code %d after panic recovery, got %d", 
+		t.Errorf("Expected status code %d after panic recovery, got %d",
 			http.StatusInternalServerError, rec.Code)
 	}
 
@@ -293,15 +293,15 @@ func TestApplyDefaultMiddleware(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&errorResp); err != nil {
 		t.Fatalf("Could not decode response body: %v", err)
 	}
-	
+
 	if errorResp.Code != ErrCodeInternalServer {
-		t.Errorf("Expected error code %s, got %s", 
+		t.Errorf("Expected error code %s, got %s",
 			ErrCodeInternalServer, errorResp.Code)
 	}
-	
+
 	// Request ID in the error response should match header
 	if errorResp.RequestID != rec.Header().Get("X-Request-ID") {
-		t.Errorf("Request ID mismatch: header has %s, response has %s", 
+		t.Errorf("Request ID mismatch: header has %s, response has %s",
 			rec.Header().Get("X-Request-ID"), errorResp.RequestID)
 	}
 }
@@ -312,7 +312,7 @@ func TestGetRequestID(t *testing.T) {
 	if id := GetRequestID(nil); id != "" {
 		t.Errorf("Expected empty string for nil context, got '%s'", id)
 	}
-	
+
 	// Test with context but no request ID
 	if id := GetRequestID(httptest.NewRequest("GET", "/", nil).Context()); id != "" {
 		t.Errorf("Expected empty string for context without request ID, got '%s'", id)

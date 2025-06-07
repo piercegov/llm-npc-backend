@@ -340,12 +340,12 @@ func runCLIMode() {
 			break
 		}
 		cliViewer.setPromptActive(false)
-		
+
 		command := strings.TrimSpace(scanner.Text())
 		if command == "quit" || command == "exit" {
 			break
 		}
-		
+
 		cliViewer.executeCommand(command)
 		cliViewer.showPrompt()
 	}
@@ -358,9 +358,9 @@ func runCLIMode() {
 }
 
 type CLIViewer struct {
-	cmd           *exec.Cmd
-	promptActive  bool
-	promptMutex   sync.Mutex
+	cmd          *exec.Cmd
+	promptActive bool
+	promptMutex  sync.Mutex
 }
 
 func NewCLIViewer() *CLIViewer {
@@ -380,7 +380,7 @@ func (cv *CLIViewer) setPromptActive(active bool) {
 func (cv *CLIViewer) printLogWithPrompt(message string) {
 	cv.promptMutex.Lock()
 	defer cv.promptMutex.Unlock()
-	
+
 	if cv.promptActive {
 		// Clear current line and print log message
 		fmt.Print("\r\033[K") // Clear line
@@ -475,7 +475,7 @@ func (cv *CLIViewer) executeCommand(command string) {
 
 func (cv *CLIViewer) readScratchpads() {
 	socketPath := "/tmp/llm-npc-backend.sock"
-	
+
 	// Create HTTP client that uses Unix domain socket
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -484,7 +484,7 @@ func (cv *CLIViewer) readScratchpads() {
 			},
 		},
 	}
-	
+
 	// Make request to console endpoint
 	resp, err := client.Get("http://unix/console/read_scratchpads")
 	if err != nil {
@@ -492,14 +492,14 @@ func (cv *CLIViewer) readScratchpads() {
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	// Parse response
 	var result map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		cv.printCommandResponse(fmt.Sprintf("Failed to parse response: %v", err))
 		return
 	}
-	
+
 	// Display results
 	if success, ok := result["success"].(bool); ok && success {
 		if data, ok := result["data"].(map[string]interface{}); ok {
@@ -511,7 +511,7 @@ func (cv *CLIViewer) readScratchpads() {
 					if npcInfo, ok := npcData.(map[string]interface{}); ok {
 						count := npcInfo["count"].(float64)
 						cv.printCommandResponse(fmt.Sprintf("  %s: %d entries", npcID, int(count)))
-						
+
 						if entries, ok := npcInfo["entries"].([]interface{}); ok {
 							for _, entry := range entries {
 								if entryMap, ok := entry.(map[string]interface{}); ok {

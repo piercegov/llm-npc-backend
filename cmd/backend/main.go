@@ -17,6 +17,15 @@ import (
 	"github.com/piercegov/llm-npc-backend/internal/tools"
 )
 
+// getAllToolsUsed extracts all tools used across all inference rounds
+func getAllToolsUsed(rounds []npc.InferenceRound) []npc.ToolResult {
+	var allTools []npc.ToolResult
+	for _, round := range rounds {
+		allTools = append(allTools, round.ToolsUsed...)
+	}
+	return allTools
+}
+
 func main() {
 	// Initialize structured logging with default level
 	logging.InitLogger("info")
@@ -110,7 +119,8 @@ func main() {
 			"surroundings":     mockInput.Surroundings,
 			"events":           mockInput.Events,
 			"llm_response":     result.LLMResponse,
-			"tools_used":       result.ToolsUsed,
+			"tools_used":       getAllToolsUsed(result.Rounds),
+			"inference_rounds": len(result.Rounds),
 			"tools_available":  len(toolRegistry.GetTools()),
 		})
 	})
@@ -119,7 +129,7 @@ func main() {
 	consoleHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Get all scratchpads from storage
 		allScratchpads := scratchpadStorage.GetAllScratchpads()
-		
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"command": "read_scratchpads",

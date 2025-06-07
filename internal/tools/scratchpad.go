@@ -53,11 +53,11 @@ func RegisterScratchpadTools(registry *ToolRegistry, storage *ScratchpadStorage)
 			},
 		},
 	}
-	
+
 	if err := registry.RegisterTool(writeToolDef, storage.handleWrite); err != nil {
 		return err
 	}
-	
+
 	// Read tool
 	readToolDef := llm.Tool{
 		Name:        "read_scratchpad",
@@ -70,22 +70,22 @@ func RegisterScratchpadTools(registry *ToolRegistry, storage *ScratchpadStorage)
 			},
 		},
 	}
-	
+
 	if err := registry.RegisterTool(readToolDef, storage.handleRead); err != nil {
 		return err
 	}
-	
+
 	// List tool
 	listToolDef := llm.Tool{
 		Name:        "list_scratchpad",
 		Description: "List all memories stored in your scratchpad",
 		Parameters:  map[string]llm.ToolParameter{}, // No parameters
 	}
-	
+
 	if err := registry.RegisterTool(listToolDef, storage.handleList); err != nil {
 		return err
 	}
-	
+
 	// Delete tool
 	deleteToolDef := llm.Tool{
 		Name:        "delete_scratchpad",
@@ -98,11 +98,11 @@ func RegisterScratchpadTools(registry *ToolRegistry, storage *ScratchpadStorage)
 			},
 		},
 	}
-	
+
 	if err := registry.RegisterTool(deleteToolDef, storage.handleDelete); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -110,15 +110,15 @@ func RegisterScratchpadTools(registry *ToolRegistry, storage *ScratchpadStorage)
 func (s *ScratchpadStorage) GetAllScratchpads() map[string]map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	result := make(map[string]map[string]interface{})
-	
+
 	for npcID, scratchpad := range s.storage {
 		scratchpad.mu.RLock()
-		
+
 		npcData := make(map[string]interface{})
 		entries := make([]map[string]interface{}, 0, len(scratchpad.Entries))
-		
+
 		for key, entry := range scratchpad.Entries {
 			entries = append(entries, map[string]interface{}{
 				"key":       key,
@@ -126,14 +126,14 @@ func (s *ScratchpadStorage) GetAllScratchpads() map[string]map[string]interface{
 				"timestamp": entry.Timestamp.Format(time.RFC3339),
 			})
 		}
-		
+
 		npcData["entries"] = entries
 		npcData["count"] = len(entries)
 		result[npcID] = npcData
-		
+
 		scratchpad.mu.RUnlock()
 	}
-	
+
 	return result
 }
 
@@ -141,7 +141,7 @@ func (s *ScratchpadStorage) GetAllScratchpads() map[string]map[string]interface{
 func (s *ScratchpadStorage) getOrCreateScratchpad(npcID string) *NPCScratchpad {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	scratchpad, exists := s.storage[npcID]
 	if !exists {
 		scratchpad = &NPCScratchpad{
@@ -158,22 +158,22 @@ func (s *ScratchpadStorage) handleWrite(ctx context.Context, npcID string, args 
 	if !ok || key == "" {
 		return ToolResult{Success: false, Message: "key must be a non-empty string"}, fmt.Errorf("invalid key")
 	}
-	
+
 	value, ok := args["value"].(string)
 	if !ok {
 		return ToolResult{Success: false, Message: "value must be a string"}, fmt.Errorf("invalid value")
 	}
-	
+
 	scratchpad := s.getOrCreateScratchpad(npcID)
-	
+
 	scratchpad.mu.Lock()
 	defer scratchpad.mu.Unlock()
-	
+
 	scratchpad.Entries[key] = ScratchpadEntry{
 		Value:     value,
 		Timestamp: time.Now(),
 	}
-	
+
 	return ToolResult{
 		Success: true,
 		Message: fmt.Sprintf("Stored memory: %s = %s", key, value),
@@ -190,23 +190,23 @@ func (s *ScratchpadStorage) handleRead(ctx context.Context, npcID string, args m
 	if !ok || key == "" {
 		return ToolResult{Success: false, Message: "key must be a non-empty string"}, fmt.Errorf("invalid key")
 	}
-	
+
 	s.mu.RLock()
 	scratchpad, exists := s.storage[npcID]
 	s.mu.RUnlock()
-	
+
 	if !exists {
 		return ToolResult{Success: false, Message: fmt.Sprintf("No memory found with key: %s", key)}, nil
 	}
-	
+
 	scratchpad.mu.RLock()
 	defer scratchpad.mu.RUnlock()
-	
+
 	entry, exists := scratchpad.Entries[key]
 	if !exists {
 		return ToolResult{Success: false, Message: fmt.Sprintf("No memory found with key: %s", key)}, nil
 	}
-	
+
 	return ToolResult{
 		Success: true,
 		Message: fmt.Sprintf("%s: %s", key, entry.Value),
@@ -223,17 +223,17 @@ func (s *ScratchpadStorage) handleList(ctx context.Context, npcID string, args m
 	s.mu.RLock()
 	scratchpad, exists := s.storage[npcID]
 	s.mu.RUnlock()
-	
+
 	if !exists || len(scratchpad.Entries) == 0 {
 		return ToolResult{Success: true, Message: "No memories stored"}, nil
 	}
-	
+
 	scratchpad.mu.RLock()
 	defer scratchpad.mu.RUnlock()
-	
+
 	memories := make([]map[string]interface{}, 0, len(scratchpad.Entries))
 	message := "Stored memories:\n"
-	
+
 	for key, entry := range scratchpad.Entries {
 		memories = append(memories, map[string]interface{}{
 			"key":       key,
@@ -242,7 +242,7 @@ func (s *ScratchpadStorage) handleList(ctx context.Context, npcID string, args m
 		})
 		message += fmt.Sprintf("- %s: %s\n", key, entry.Value)
 	}
-	
+
 	return ToolResult{
 		Success: true,
 		Message: message,
@@ -259,24 +259,24 @@ func (s *ScratchpadStorage) handleDelete(ctx context.Context, npcID string, args
 	if !ok || key == "" {
 		return ToolResult{Success: false, Message: "key must be a non-empty string"}, fmt.Errorf("invalid key")
 	}
-	
+
 	s.mu.RLock()
 	scratchpad, exists := s.storage[npcID]
 	s.mu.RUnlock()
-	
+
 	if !exists {
 		return ToolResult{Success: false, Message: fmt.Sprintf("No memory found with key: %s", key)}, nil
 	}
-	
+
 	scratchpad.mu.Lock()
 	defer scratchpad.mu.Unlock()
-	
+
 	if _, exists := scratchpad.Entries[key]; !exists {
 		return ToolResult{Success: false, Message: fmt.Sprintf("No memory found with key: %s", key)}, nil
 	}
-	
+
 	delete(scratchpad.Entries, key)
-	
+
 	return ToolResult{
 		Success: true,
 		Message: fmt.Sprintf("Deleted memory with key: %s", key),

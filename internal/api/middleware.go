@@ -62,7 +62,7 @@ func RequestTracingMiddleware(next http.Handler) http.Handler {
 
 		// Record start time
 		startTime := time.Now()
-		
+
 		// Check if client sent a timestamp header
 		clientTimestamp := r.Header.Get("X-Client-Timestamp")
 		if clientTimestamp != "" {
@@ -138,11 +138,11 @@ func ValidationMiddleware(allowedMethods []string, requireJSON bool) func(http.H
 			if !methodAllowed {
 				// Set Allow header with accepted methods
 				w.Header().Set("Allow", strings.Join(allowedMethods, ", "))
-				
+
 				WriteErrorResponse(
 					w,
 					http.StatusMethodNotAllowed,
-					fmt.Sprintf("Method %s not allowed, supported methods: %s", 
+					fmt.Sprintf("Method %s not allowed, supported methods: %s",
 						r.Method, strings.Join(allowedMethods, ", ")),
 					ErrCodeMethodNotAllowed,
 					nil,
@@ -211,7 +211,7 @@ func ErrorHandlingMiddleware(next http.Handler) http.Handler {
 		// Add error handling utilities to the request context
 		ctx := context.WithValue(r.Context(), contextKey("error_handler"), true)
 		r = r.WithContext(ctx)
-		
+
 		next.ServeHTTP(w, r)
 	})
 }

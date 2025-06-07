@@ -27,16 +27,15 @@ type ollamaResponse struct {
 		Content   string               `json:"content"`
 		ToolCalls []ollamaFunctionCall `json:"tool_calls"`
 	} `json:"message"`
-	Done           bool   `json:"done"`
-	DoneReason     string `json:"done_reason"`
-	TotalDuration  int64  `json:"total_duration"`
-	LoadDuration   int64  `json:"load_duration"`
-	PromptEvalCount int    `json:"prompt_eval_count"`
-	PromptEvalDuration int64 `json:"prompt_eval_duration"`
-	EvalCount      int    `json:"eval_count"`
-	EvalDuration   int64  `json:"eval_duration"`
+	Done               bool   `json:"done"`
+	DoneReason         string `json:"done_reason"`
+	TotalDuration      int64  `json:"total_duration"`
+	LoadDuration       int64  `json:"load_duration"`
+	PromptEvalCount    int    `json:"prompt_eval_count"`
+	PromptEvalDuration int64  `json:"prompt_eval_duration"`
+	EvalCount          int    `json:"eval_count"`
+	EvalDuration       int64  `json:"eval_duration"`
 }
-
 
 // ollamaToolFunctionDetails defines the "function" part of a tool definition for requests.
 type ollamaToolFunctionDetails struct {
@@ -59,7 +58,6 @@ func NewOllama(ollamaPort string) *Ollama {
 	return &Ollama{OLLAMA_PORT: ollamaPort}
 }
 
-
 func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 	// Transform Tool to Ollama-specific tool format
 	var formattedTools []ollamaTool
@@ -68,11 +66,11 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 		for i, t := range request.Tools {
 			// Convert our Tool format to Ollama's expected format
 			params := map[string]interface{}{
-				"type": "object",
+				"type":       "object",
 				"properties": make(map[string]interface{}),
-				"required": []string{},
+				"required":   []string{},
 			}
-			
+
 			// Convert parameters
 			for name, param := range t.Parameters {
 				params["properties"].(map[string]interface{})[name] = map[string]interface{}{
@@ -83,7 +81,7 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 					params["required"] = append(params["required"].([]string), name)
 				}
 			}
-			
+
 			formattedTools[i] = ollamaTool{
 				Type: "function",
 				Function: ollamaToolFunctionDetails{
@@ -98,7 +96,7 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 	ollamaModel := cfg.ReadConfig().OllamaModel
 
 	messages := []map[string]interface{}{}
-	
+
 	// Add system message if provided
 	if request.SystemPrompt != "" {
 		messages = append(messages, map[string]interface{}{
@@ -106,7 +104,7 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 			"content": request.SystemPrompt,
 		})
 	}
-	
+
 	// Add user message
 	messages = append(messages, map[string]interface{}{
 		"role":    "user",

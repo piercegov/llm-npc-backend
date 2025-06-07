@@ -11,7 +11,7 @@ var Logger *slog.Logger
 // InitLogger initializes the global logger with the specified level and format
 func InitLogger(logLevel string) {
 	level := parseLogLevel(logLevel)
-	
+
 	// Use JSON format for production, text for development
 	var handler slog.Handler
 	if isProduction() {
@@ -23,7 +23,7 @@ func InitLogger(logLevel string) {
 			Level: level,
 		})
 	}
-	
+
 	Logger = slog.New(handler)
 	slog.SetDefault(Logger)
 }
@@ -80,7 +80,7 @@ func LogHTTPRequest(method, path string, statusCode int, args ...any) {
 		"status_code", statusCode,
 	}
 	allArgs := append(baseArgs, args...)
-	
+
 	if statusCode >= 400 {
 		Logger.Warn("HTTP request completed with error", allArgs...)
 	} else {
