@@ -3,12 +3,15 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"image/color"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -29,6 +32,17 @@ type LogViewer struct {
 }
 
 func main() {
+	cliMode := flag.Bool("cli", false, "Run in CLI mode instead of GUI")
+	flag.Parse()
+
+	if *cliMode {
+		runCLIMode()
+	} else {
+		runGUIMode()
+	}
+}
+
+func runGUIMode() {
 	myApp := app.New()
 	myWindow := myApp.NewWindow("LLM NPC Backend - Log Viewer")
 	myWindow.Resize(fyne.NewSize(1000, 700))
@@ -304,5 +318,210 @@ func (lv *LogViewer) readScratchpads() {
 		}
 	} else {
 		lv.appendLog("Failed to read scratchpads")
+	}
+}
+
+func runCLIMode() {
+	fmt.Println("LLM NPC Backend - CLI Mode")
+	fmt.Println("Starting backend and streaming logs...")
+	fmt.Println("Type 'read_scratchpads' to read scratchpads, 'quit' to exit")
+	fmt.Println("---")
+
+	// Start the backend process and log streaming
+	cliViewer := NewCLIViewer()
+	go cliViewer.startBackendAndStream()
+
+	// Handle user input for console commands
+	scanner := bufio.NewScanner(os.Stdin)
+	cliViewer.showPrompt()
+	for {
+		cliViewer.setPromptActive(true)
+		if !scanner.Scan() {
+			break
+		}
+		cliViewer.setPromptActive(false)
+		
+		command := strings.TrimSpace(scanner.Text())
+		if command == "quit" || command == "exit" {
+			break
+		}
+		
+		cliViewer.executeCommand(command)
+		cliViewer.showPrompt()
+	}
+
+	// Cleanup
+	if cliViewer.cmd != nil && cliViewer.cmd.Process != nil {
+		cliViewer.cmd.Process.Kill()
+	}
+	fmt.Println("\nGoodbye!")
+}
+
+type CLIViewer struct {
+	cmd           *exec.Cmd
+	promptActive  bool
+	promptMutex   sync.Mutex
+}
+
+func NewCLIViewer() *CLIViewer {
+	return &CLIViewer{}
+}
+
+func (cv *CLIViewer) showPrompt() {
+	fmt.Print("> ")
+}
+
+func (cv *CLIViewer) setPromptActive(active bool) {
+	cv.promptMutex.Lock()
+	cv.promptActive = active
+	cv.promptMutex.Unlock()
+}
+
+func (cv *CLIViewer) printLogWithPrompt(message string) {
+	cv.promptMutex.Lock()
+	defer cv.promptMutex.Unlock()
+	
+	if cv.promptActive {
+		// Clear current line and print log message
+		fmt.Print("\r\033[K") // Clear line
+		fmt.Println(message)
+		fmt.Print("> ") // Restore prompt
+	} else {
+		fmt.Println(message)
+	}
+}
+
+func (cv *CLIViewer) startBackendAndStream() {
+	// Change to the project directory
+	projectDir := "/Users/piercegovernale/Documents/llm-npc-backend"
+
+	// Build the backend first
+	buildCmd := exec.Command("go", "build", "./cmd/backend/...")
+	buildCmd.Dir = projectDir
+	if err := buildCmd.Run(); err != nil {
+		cv.printLogWithPrompt(fmt.Sprintf("Failed to build backend: %v", err))
+		return
+	}
+
+	// Start the backend
+	cv.cmd = exec.Command("./backend")
+	cv.cmd.Dir = projectDir
+
+	stdout, err := cv.cmd.StdoutPipe()
+	if err != nil {
+		cv.printLogWithPrompt(fmt.Sprintf("Failed to create stdout pipe: %v", err))
+		return
+	}
+
+	stderr, err := cv.cmd.StderrPipe()
+	if err != nil {
+		cv.printLogWithPrompt(fmt.Sprintf("Failed to create stderr pipe: %v", err))
+		return
+	}
+
+	if err := cv.cmd.Start(); err != nil {
+		cv.printLogWithPrompt(fmt.Sprintf("Failed to start backend: %v", err))
+		return
+	}
+
+	cv.printLogWithPrompt("Backend started successfully!")
+
+	// Read stdout
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			line := scanner.Text()
+			timestamp := time.Now().Format("15:04:05")
+			cv.printLogWithPrompt(fmt.Sprintf("[%s] %s", timestamp, line))
+		}
+	}()
+
+	// Read stderr
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			timestamp := time.Now().Format("15:04:05")
+			cv.printLogWithPrompt(fmt.Sprintf("[%s] [ERROR] %s", timestamp, line))
+		}
+	}()
+
+	// Wait for process to finish
+	go func() {
+		if err := cv.cmd.Wait(); err != nil {
+			cv.printLogWithPrompt(fmt.Sprintf("Backend process ended with error: %v", err))
+		} else {
+			cv.printLogWithPrompt("Backend process ended normally")
+		}
+	}()
+}
+
+func (cv *CLIViewer) executeCommand(command string) {
+	switch command {
+	case "read_scratchpads":
+		cv.readScratchpads()
+	case "":
+		// Empty command, do nothing
+	default:
+		cv.printLogWithPrompt(fmt.Sprintf("Unknown command: %s", command))
+		cv.printLogWithPrompt("Available commands: read_scratchpads, quit")
+	}
+}
+
+func (cv *CLIViewer) readScratchpads() {
+	socketPath := "/tmp/llm-npc-backend.sock"
+	
+	// Create HTTP client that uses Unix domain socket
+	client := &http.Client{
+		Transport: &http.Transport{
+			Dial: func(network, addr string) (net.Conn, error) {
+				return net.Dial("unix", socketPath)
+			},
+		},
+	}
+	
+	// Make request to console endpoint
+	resp, err := client.Get("http://unix/console/read_scratchpads")
+	if err != nil {
+		cv.printLogWithPrompt(fmt.Sprintf("Failed to read scratchpads: %v", err))
+		return
+	}
+	defer resp.Body.Close()
+	
+	// Parse response
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		cv.printLogWithPrompt(fmt.Sprintf("Failed to parse response: %v", err))
+		return
+	}
+	
+	// Display results
+	if success, ok := result["success"].(bool); ok && success {
+		if data, ok := result["data"].(map[string]interface{}); ok {
+			if len(data) == 0 {
+				cv.printLogWithPrompt("No scratchpads found")
+			} else {
+				cv.printLogWithPrompt(fmt.Sprintf("Found %d NPCs with scratchpads:", len(data)))
+				for npcID, npcData := range data {
+					if npcInfo, ok := npcData.(map[string]interface{}); ok {
+						count := npcInfo["count"].(float64)
+						cv.printLogWithPrompt(fmt.Sprintf("  %s: %d entries", npcID, int(count)))
+						
+						if entries, ok := npcInfo["entries"].([]interface{}); ok {
+							for _, entry := range entries {
+								if entryMap, ok := entry.(map[string]interface{}); ok {
+									key := entryMap["key"].(string)
+									value := entryMap["value"].(string)
+									timestamp := entryMap["timestamp"].(string)
+									cv.printLogWithPrompt(fmt.Sprintf("    %s: %s (at %s)", key, value, timestamp))
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	} else {
+		cv.printLogWithPrompt("Failed to read scratchpads")
 	}
 }
