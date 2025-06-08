@@ -28,7 +28,8 @@ type NPCRegisterResponse struct {
 
 // NPCActRequest represents the request to make an NPC act
 type NPCActRequest struct {
-	NPCID string `json:"npc_id" binding:"required"`
+	NPCID     string `json:"npc_id" binding:"required"`
+	SessionID string `json:"session_id,omitempty"` // Optional: for custom tools
 	NPCTickInput
 }
 
@@ -96,12 +97,12 @@ type NPCTickEvent struct {
 }
 
 type NPCTickInput struct {
-	Surroundings        []Surrounding       `json:"surroundings"`
-	KnowledgeGraph      kg.KnowledgeGraph   `json:"knowledge_graph"`
-	NPCState            NPCState            `json:"npc_state"`
-	KnowledgeGraphDepth int                 `json:"knowledge_graph_depth,omitempty"`
-	Events              []NPCTickEvent      `json:"events"`
-	ToolRegistry        *tools.ToolRegistry `json:"-"` // Optional: if nil, no tools available
+	Surroundings        []Surrounding      `json:"surroundings"`
+	KnowledgeGraph      kg.KnowledgeGraph  `json:"knowledge_graph"`
+	NPCState            NPCState           `json:"npc_state"`
+	KnowledgeGraphDepth int                `json:"knowledge_graph_depth,omitempty"`
+	Events              []NPCTickEvent     `json:"events"`
+	ToolRegistry        tools.ToolProvider `json:"-"` // Optional: if nil, no tools available
 }
 type NPC struct {
 	Name            string

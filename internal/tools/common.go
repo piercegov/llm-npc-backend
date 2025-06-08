@@ -7,6 +7,12 @@ import (
 	"github.com/piercegov/llm-npc-backend/internal/llm"
 )
 
+// ToolProvider is the interface for anything that can provide and execute tools
+type ToolProvider interface {
+	GetTools() []llm.Tool
+	ExecuteTool(ctx context.Context, npcID string, toolUse llm.ToolUse) (ToolResult, error)
+}
+
 // ToolResult represents the outcome of executing a tool
 type ToolResult struct {
 	Success bool
@@ -82,6 +88,17 @@ func (r *ToolRegistry) GetTools() []llm.Tool {
 	return tools
 }
 
+// GetToolsWithSession returns all registered tools plus session-specific tools
+func (r *ToolRegistry) GetToolsWithSession(sessionTools []llm.Tool) []llm.Tool {
+	// Start with global tools
+	tools := r.GetTools()
+	
+	// Add session tools
+	tools = append(tools, sessionTools...)
+	
+	return tools
+}
+
 // ExecuteTool executes a tool by name
 func (r *ToolRegistry) ExecuteTool(ctx context.Context, npcID string, toolUse llm.ToolUse) (ToolResult, error) {
 	handler, exists := r.handlers[toolUse.ToolName]
@@ -125,4 +142,46 @@ func validateArgs(tool llm.Tool, args map[string]interface{}) error {
 	// TODO: Add type validation based on param.Type
 
 	return nil
+}
+
+// CombinedToolRegistry wraps a ToolRegistry with session-specific tools
+type CombinedToolRegistry struct {
+	base         *ToolRegistry
+	sessionTools []llm.Tool
+}
+
+// NewCombinedToolRegistry creates a new combined registry
+func NewCombinedToolRegistry(base *ToolRegistry, sessionTools []llm.Tool) *CombinedToolRegistry {
+	return &CombinedToolRegistry{
+		base:         base,
+		sessionTools: sessionTools,
+	}
+}
+
+// GetTools returns all tools (global + session)
+func (c *CombinedToolRegistry) GetTools() []llm.Tool {
+	return c.base.GetToolsWithSession(c.sessionTools)
+}
+
+// ExecuteTool tries to execute from session tools first, then falls back to global
+func (c *CombinedToolRegistry) ExecuteTool(ctx context.Context, npcID string, toolUse llm.ToolUse) (ToolResult, error) {
+	// For now, session tools are definition-only (executed by game engine)
+	// So we just check if it exists in session tools
+	for _, tool := range c.sessionTools {
+		if tool.Name == toolUse.ToolName {
+			// Return a result indicating the game engine should handle this
+			return ToolResult{
+				Success: true,
+				Message: fmt.Sprintf("Session tool '%s' called - to be executed by game engine", toolUse.ToolName),
+				Data: map[string]interface{}{
+					"session_tool": true,
+					"tool_name":    toolUse.ToolName,
+					"args":         toolUse.ToolArgs,
+				},
+			}, nil
+		}
+	}
+	
+	// Fall back to global tools
+	return c.base.ExecuteTool(ctx, npcID, toolUse)
 }

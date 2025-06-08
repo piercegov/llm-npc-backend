@@ -12,15 +12,17 @@ import (
 
 // NPCHandlers contains all NPC-related HTTP handlers
 type NPCHandlers struct {
-	storage      *NPCStorage
-	toolRegistry *tools.ToolRegistry
+	storage        *NPCStorage
+	toolRegistry   *tools.ToolRegistry
+	sessionManager *tools.SessionManager
 }
 
 // NewNPCHandlers creates a new instance of NPC handlers
-func NewNPCHandlers(storage *NPCStorage, toolRegistry *tools.ToolRegistry) *NPCHandlers {
+func NewNPCHandlers(storage *NPCStorage, toolRegistry *tools.ToolRegistry, sessionManager *tools.SessionManager) *NPCHandlers {
 	return &NPCHandlers{
-		storage:      storage,
-		toolRegistry: toolRegistry,
+		storage:        storage,
+		toolRegistry:   toolRegistry,
+		sessionManager: sessionManager,
 	}
 }
 
@@ -87,7 +89,21 @@ func (h *NPCHandlers) ActHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set the tool registry in the input
-	req.NPCTickInput.ToolRegistry = h.toolRegistry
+	// If session ID is provided, combine global and session tools
+	if req.SessionID != "" && h.sessionManager != nil {
+		sessionTools, err := h.sessionManager.GetSessionTools(req.SessionID)
+		if err != nil {
+			// Log but don't fail - just use global tools
+			logging.Warn("Failed to get session tools", "session_id", req.SessionID, "error", err)
+			req.NPCTickInput.ToolRegistry = h.toolRegistry
+		} else {
+			// Create combined registry with both global and session tools
+			combinedRegistry := tools.NewCombinedToolRegistry(h.toolRegistry, sessionTools)
+			req.NPCTickInput.ToolRegistry = combinedRegistry
+		}
+	} else {
+		req.NPCTickInput.ToolRegistry = h.toolRegistry
+	}
 
 	// Execute the tick
 	result := npc.ActForTick(req.NPCTickInput)

@@ -99,6 +99,7 @@ Execute a tick/action cycle for a specific NPC. This endpoint supports multi-rou
 ```json
 {
   "npc_id": "string (required) - UUID of the NPC",
+  "session_id": "string (optional) - Session ID for custom tools",
   "surroundings": [
     {
       "name": "string - Name of the surrounding element",
@@ -183,6 +184,8 @@ curl -X POST http://localhost:8080/npc/act \
 - NPCs can execute up to 3 inference rounds if they use the `continue_thinking` tool
 - Each round can include tool usage for complex decision-making
 - The final `llm_response` contains the NPC's action or dialogue
+- Custom tools (registered via session_id) will appear in `tools_used` but must be executed by the game engine
+- Include tool execution results as events in the next `/npc/act` call for feedback
 
 #### GET /npc/list
 List all registered NPCs.
@@ -237,6 +240,109 @@ Remove an NPC from the system.
   "success": true,
   "message": "NPC deleted successfully"
 }
+```
+
+### Tool Management
+
+#### POST /tools/register
+Register custom tools for a game session. These tools become available to NPCs when the session_id is provided in the `/npc/act` request.
+
+**Request Body:**
+```json
+{
+  "session_id": "string (required) - Unique session identifier for your game instance",
+  "tools": [
+    {
+      "name": "string (required) - Tool name (e.g., 'speak', 'move')",
+      "description": "string (required) - Description of what the tool does",
+      "parameters": {
+        "parameter_name": {
+          "type": "string (required) - One of: string, number, boolean, object, array",
+          "description": "string (required) - Parameter description",
+          "required": "boolean (optional) - Whether parameter is required"
+        }
+      }
+    }
+  ]
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "session_id": "string",
+  "tools_count": "integer",
+  "registered_at": "ISO8601 timestamp",
+  "success": true,
+  "message": "Tools registered successfully",
+  "tool_names": ["array of registered tool names"]
+}
+```
+
+**Example:**
+```bash
+curl -X POST http://localhost:8080/tools/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "game-session-123",
+    "tools": [
+      {
+        "name": "speak",
+        "description": "Make the NPC speak aloud to other characters",
+        "parameters": {
+          "message": {
+            "type": "string",
+            "description": "What the NPC should say",
+            "required": true
+          },
+          "target": {
+            "type": "string", 
+            "description": "Who to speak to (optional)",
+            "required": false
+          }
+        }
+      },
+      {
+        "name": "move",
+        "description": "Move the NPC to a different location",
+        "parameters": {
+          "destination": {
+            "type": "string",
+            "description": "Where to move the NPC",
+            "required": true
+          }
+        }
+      }
+    ]
+  }'
+```
+
+#### GET /tools/session/{id}
+Get information about registered tools for a specific session.
+
+**Path Parameters:**
+- `id` (string, required): Session ID
+
+**Response (200 OK):**
+```json
+{
+  "session_id": "string",
+  "tools_count": "integer",
+  "tool_names": ["array of tool names"],
+  "tools": [
+    {
+      "name": "string",
+      "description": "string",
+      "parameters": {}
+    }
+  ],
+  "success": true
+}
+```
+
+**Example:**
+```bash
+curl http://localhost:8080/tools/session/game-session-123
 ```
 
 ### Development & Testing
@@ -346,7 +452,7 @@ This API is designed to integrate with popular game engines:
 - **Unreal Engine**: Use HTTP module
 - **Custom Engines**: Standard HTTP client libraries
 
-### Recommended Integration Pattern
+### Basic Integration Pattern
 
 1. Register NPCs during game initialization using `/npc/register`
 2. Call `/npc/act` during game tick cycles with current surroundings and events
@@ -354,10 +460,40 @@ This API is designed to integrate with popular game engines:
 4. Track events between ticks for temporal awareness
 5. Use knowledge graphs for persistent NPC memory and world state
 
+### Custom Tools Integration Pattern
+
+For games that need NPCs to perform game-specific actions (speak, move, interact, etc.):
+
+1. **Session Setup**: Generate a unique session ID for your game instance
+2. **Tool Registration**: Register custom tools at game startup using `/tools/register`
+3. **NPC Actions**: Include `session_id` in `/npc/act` requests to enable custom tools
+4. **Tool Execution**: Check `tools_used` in responses and execute tools in your game engine
+5. **Feedback Loop**: Include tool execution results as events in the next NPC tick
+
+**Example Workflow:**
+```
+Game Startup:
+├── Generate session_id: "my-game-session-123"
+├── Register tools: POST /tools/register (speak, move, interact)
+└── Register NPCs: POST /npc/register
+
+Game Loop:
+├── NPC Tick: POST /npc/act (with session_id)
+├── Check response.rounds[].tools_used
+├── Execute tools in game (make character speak, move, etc.)
+├── Create events for tool results
+└── Next NPC Tick: Include tool result events
+
+Tool Execution Flow:
+NPC decides to speak → Backend returns tool in response → Game engine makes character speak → Result added as event for next tick
+```
+
 ## Key Features
 
 - **Multi-round Inference**: NPCs can think through complex scenarios over multiple rounds (max 3)
-- **Tool Integration**: NPCs can execute tools for game-specific actions
+- **Custom Tools**: Game engines can register custom tools (speak, move, interact) for NPCs to use
+- **Session Management**: Tool registration is scoped to game sessions with automatic cleanup
+- **Built-in Tools**: Includes scratchpad tools for NPC memory and continue_thinking for complex reasoning
 - **Knowledge Graphs**: Support for persistent memory and world state representation
 - **Request Tracing**: Every request includes unique ID and timing for debugging
 - **Structured Logging**: Comprehensive logging with different levels

@@ -55,9 +55,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Initialize session manager
+	sessionManager := tools.NewSessionManager()
+
 	// Initialize NPC storage and handlers
 	npcStorage := npc.NewNPCStorage()
-	npcHandlers := npc.NewNPCHandlers(npcStorage, toolRegistry)
+	npcHandlers := npc.NewNPCHandlers(npcStorage, toolRegistry, sessionManager)
+
+	// Initialize tool handlers
+	toolHandlers := tools.NewToolHandlers(sessionManager)
 
 	if *httpMode {
 		logging.Info("Starting LLM NPC Backend server",
@@ -66,7 +72,8 @@ func main() {
 			"log_level", config.LogLevel,
 			"cerebras_base_url", config.BaseUrl,
 			"tools_count", len(toolRegistry.GetTools()),
-			"npc_endpoints", "POST /npc/register, POST /npc/act, GET /npc/list, GET /npc/{id}, DELETE /npc/{id}")
+			"npc_endpoints", "POST /npc/register, POST /npc/act, GET /npc/list, GET /npc/{id}, DELETE /npc/{id}",
+			"tool_endpoints", "POST /tools/register, GET /tools/session/{id}")
 	} else {
 		logging.Info("Starting LLM NPC Backend server",
 			"mode", "Unix Socket",
@@ -74,7 +81,8 @@ func main() {
 			"log_level", config.LogLevel,
 			"cerebras_base_url", config.BaseUrl,
 			"tools_count", len(toolRegistry.GetTools()),
-			"npc_endpoints", "POST /npc/register, POST /npc/act, GET /npc/list, GET /npc/{id}, DELETE /npc/{id}")
+			"npc_endpoints", "POST /npc/register, POST /npc/act, GET /npc/list, GET /npc/{id}, DELETE /npc/{id}",
+			"tool_endpoints", "POST /tools/register, GET /tools/session/{id}")
 	}
 
 	// Define the root handler
@@ -200,6 +208,15 @@ func main() {
 
 	http.Handle("/npc/", api.ApplyDefaultMiddleware(
 		api.WithMethodValidation(npcGetDeleteHandler, "GET", "DELETE"),
+	))
+
+	// Tool management endpoints
+	http.Handle("/tools/register", api.ApplyDefaultMiddleware(
+		api.WithMethodValidation(http.HandlerFunc(toolHandlers.RegisterHandler), "POST"),
+	))
+
+	http.Handle("/tools/session/", api.ApplyDefaultMiddleware(
+		api.WithMethodValidation(http.HandlerFunc(toolHandlers.SessionInfoHandler), "GET"),
 	))
 
 	// Handle graceful shutdown
