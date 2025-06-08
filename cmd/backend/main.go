@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"net"
 	"net/http"
@@ -27,6 +28,10 @@ func getAllToolsUsed(rounds []npc.InferenceRound) []npc.ToolResult {
 }
 
 func main() {
+	// Parse command line flags
+	httpMode := flag.Bool("http", false, "Run server in HTTP mode instead of Unix socket mode")
+	flag.Parse()
+
 	// Initialize structured logging with default level
 	logging.InitLogger("info")
 
@@ -35,8 +40,10 @@ func main() {
 	// Reinitialize logger with configured log level
 	logging.InitLogger(config.LogLevel)
 
-	// Remove any existing socket file
-	os.Remove(config.SocketPath)
+	// Remove any existing socket file if using Unix socket mode
+	if !*httpMode {
+		os.Remove(config.SocketPath)
+	}
 
 	// Initialize tool registry and scratchpad storage
 	toolRegistry := tools.NewToolRegistry()
@@ -52,12 +59,23 @@ func main() {
 	npcStorage := npc.NewNPCStorage()
 	npcHandlers := npc.NewNPCHandlers(npcStorage, toolRegistry)
 
-	logging.Info("Starting LLM NPC Backend server",
-		"socket", config.SocketPath,
-		"log_level", config.LogLevel,
-		"cerebras_base_url", config.BaseUrl,
-		"tools_count", len(toolRegistry.GetTools()),
-		"npc_endpoints", "POST /npc/register, POST /npc/act, GET /npc/list, GET /npc/{id}, DELETE /npc/{id}")
+	if *httpMode {
+		logging.Info("Starting LLM NPC Backend server",
+			"mode", "HTTP",
+			"port", config.HTTPPort,
+			"log_level", config.LogLevel,
+			"cerebras_base_url", config.BaseUrl,
+			"tools_count", len(toolRegistry.GetTools()),
+			"npc_endpoints", "POST /npc/register, POST /npc/act, GET /npc/list, GET /npc/{id}, DELETE /npc/{id}")
+	} else {
+		logging.Info("Starting LLM NPC Backend server",
+			"mode", "Unix Socket",
+			"socket", config.SocketPath,
+			"log_level", config.LogLevel,
+			"cerebras_base_url", config.BaseUrl,
+			"tools_count", len(toolRegistry.GetTools()),
+			"npc_endpoints", "POST /npc/register, POST /npc/act, GET /npc/list, GET /npc/{id}, DELETE /npc/{id}")
+	}
 
 	// Define the root handler
 	rootHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -184,31 +202,53 @@ func main() {
 		api.WithMethodValidation(npcGetDeleteHandler, "GET", "DELETE"),
 	))
 
-	// Create Unix socket listener
-	listener, err := net.Listen("unix", config.SocketPath)
-	if err != nil {
-		logging.Error("Failed to create Unix socket", "error", err, "socket", config.SocketPath)
-		os.Exit(1)
-	}
-	defer listener.Close()
-
 	// Handle graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	go func() {
-		<-sigChan
-		logging.Info("Shutting down server...")
-		listener.Close()
-		os.Remove(config.SocketPath)
-	}()
+	if *httpMode {
+		// HTTP mode
+		server := &http.Server{
+			Addr: config.HTTPPort,
+		}
 
-	logging.Info("Server listening on Unix socket", "socket", config.SocketPath)
+		go func() {
+			<-sigChan
+			logging.Info("Shutting down server...")
+			server.Close()
+		}()
 
-	// Start serving on the Unix socket
-	err = http.Serve(listener, nil)
-	if err != nil && err != net.ErrClosed {
-		logging.Error("Server error", "error", err)
-		os.Exit(1)
+		logging.Info("Server listening on HTTP", "port", config.HTTPPort)
+
+		// Start serving on HTTP
+		err := server.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			logging.Error("Server error", "error", err)
+			os.Exit(1)
+		}
+	} else {
+		// Unix socket mode
+		listener, err := net.Listen("unix", config.SocketPath)
+		if err != nil {
+			logging.Error("Failed to create Unix socket", "error", err, "socket", config.SocketPath)
+			os.Exit(1)
+		}
+		defer listener.Close()
+
+		go func() {
+			<-sigChan
+			logging.Info("Shutting down server...")
+			listener.Close()
+			os.Remove(config.SocketPath)
+		}()
+
+		logging.Info("Server listening on Unix socket", "socket", config.SocketPath)
+
+		// Start serving on the Unix socket
+		err = http.Serve(listener, nil)
+		if err != nil && err != net.ErrClosed {
+			logging.Error("Server error", "error", err)
+			os.Exit(1)
+		}
 	}
 }

@@ -29,31 +29,33 @@ type LogViewer struct {
 	logBinding   binding.String
 	allLogs      []string
 	cmd          *exec.Cmd
+	httpMode     bool
 }
 
 func main() {
 	cliMode := flag.Bool("cli", false, "Run in CLI mode instead of GUI")
+	httpMode := flag.Bool("http", false, "Run backend in HTTP mode instead of Unix socket mode")
 	flag.Parse()
 
 	if *cliMode {
-		runCLIMode()
+		runCLIMode(*httpMode)
 	} else {
-		runGUIMode()
+		runGUIMode(*httpMode)
 	}
 }
 
-func runGUIMode() {
+func runGUIMode(httpMode bool) {
 	myApp := app.New()
 	myWindow := myApp.NewWindow("LLM NPC Backend - Log Viewer")
 	myWindow.Resize(fyne.NewSize(1000, 700))
 
-	logViewer := NewLogViewer()
+	logViewer := NewLogViewer(httpMode)
 	content := logViewer.CreateUI()
 
 	myWindow.SetContent(content)
 
 	// Start the backend process and log streaming
-	go logViewer.StartBackendAndStream()
+	go logViewer.StartBackendAndStream(httpMode)
 
 	myWindow.ShowAndRun()
 
@@ -62,7 +64,7 @@ func runGUIMode() {
 	}
 }
 
-func NewLogViewer() *LogViewer {
+func NewLogViewer(httpMode bool) *LogViewer {
 	logBinding := binding.NewString()
 	logContainer := container.NewVBox()
 
@@ -70,6 +72,7 @@ func NewLogViewer() *LogViewer {
 		logContainer: logContainer,
 		logBinding:   logBinding,
 		allLogs:      make([]string, 0),
+		httpMode:     httpMode,
 	}
 }
 
@@ -108,7 +111,7 @@ func (lv *LogViewer) CreateUI() *fyne.Container {
 	)
 }
 
-func (lv *LogViewer) StartBackendAndStream() {
+func (lv *LogViewer) StartBackendAndStream(httpMode bool) {
 	// Change to the project directory
 	projectDir := "/Users/piercegovernale/Documents/llm-npc-backend"
 
@@ -121,7 +124,13 @@ func (lv *LogViewer) StartBackendAndStream() {
 	}
 
 	// Start the backend
-	lv.cmd = exec.Command("./backend")
+	if httpMode {
+		lv.cmd = exec.Command("./backend", "--http")
+		lv.appendLog("Starting backend in HTTP mode...\n")
+	} else {
+		lv.cmd = exec.Command("./backend")
+		lv.appendLog("Starting backend in Unix socket mode...\n")
+	}
 	lv.cmd.Dir = projectDir
 
 	stdout, err := lv.cmd.StdoutPipe()
@@ -264,19 +273,28 @@ func (lv *LogViewer) executeConsoleCommand(command string) {
 }
 
 func (lv *LogViewer) readScratchpads() {
-	socketPath := "/tmp/llm-npc-backend.sock"
+	var client *http.Client
+	var url string
 
-	// Create HTTP client that uses Unix domain socket
-	client := &http.Client{
-		Transport: &http.Transport{
-			Dial: func(network, addr string) (net.Conn, error) {
-				return net.Dial("unix", socketPath)
+	if lv.httpMode {
+		// HTTP mode - use standard HTTP client
+		client = &http.Client{}
+		url = "http://localhost:8080/console/read_scratchpads"
+	} else {
+		// Unix socket mode - use Unix domain socket
+		socketPath := "/tmp/llm-npc-backend.sock"
+		client = &http.Client{
+			Transport: &http.Transport{
+				Dial: func(network, addr string) (net.Conn, error) {
+					return net.Dial("unix", socketPath)
+				},
 			},
-		},
+		}
+		url = "http://unix/console/read_scratchpads"
 	}
 
 	// Make request to console endpoint
-	resp, err := client.Get("http://unix/console/read_scratchpads")
+	resp, err := client.Get(url)
 	if err != nil {
 		lv.appendLog(fmt.Sprintf("Failed to read scratchpads: %v", err))
 		return
@@ -321,15 +339,19 @@ func (lv *LogViewer) readScratchpads() {
 	}
 }
 
-func runCLIMode() {
+func runCLIMode(httpMode bool) {
 	fmt.Println("LLM NPC Backend - CLI Mode")
-	fmt.Println("Starting backend and streaming logs...")
+	if httpMode {
+		fmt.Println("Starting backend in HTTP mode and streaming logs...")
+	} else {
+		fmt.Println("Starting backend in Unix socket mode and streaming logs...")
+	}
 	fmt.Println("Type 'read_scratchpads' to read scratchpads, 'quit' to exit")
 	fmt.Println("---")
 
 	// Start the backend process and log streaming
-	cliViewer := NewCLIViewer()
-	go cliViewer.startBackendAndStream()
+	cliViewer := NewCLIViewer(httpMode)
+	go cliViewer.startBackendAndStream(httpMode)
 
 	// Handle user input for console commands
 	scanner := bufio.NewScanner(os.Stdin)
@@ -361,10 +383,13 @@ type CLIViewer struct {
 	cmd          *exec.Cmd
 	promptActive bool
 	promptMutex  sync.Mutex
+	httpMode     bool
 }
 
-func NewCLIViewer() *CLIViewer {
-	return &CLIViewer{}
+func NewCLIViewer(httpMode bool) *CLIViewer {
+	return &CLIViewer{
+		httpMode: httpMode,
+	}
 }
 
 func (cv *CLIViewer) showPrompt() {
@@ -396,7 +421,7 @@ func (cv *CLIViewer) printCommandResponse(message string) {
 	cv.printLogWithPrompt(fmt.Sprintf("[%s] [CONSOLE] %s", timestamp, message))
 }
 
-func (cv *CLIViewer) startBackendAndStream() {
+func (cv *CLIViewer) startBackendAndStream(httpMode bool) {
 	// Change to the project directory
 	projectDir := "/Users/piercegovernale/Documents/llm-npc-backend"
 
@@ -409,7 +434,11 @@ func (cv *CLIViewer) startBackendAndStream() {
 	}
 
 	// Start the backend
-	cv.cmd = exec.Command("./backend")
+	if httpMode {
+		cv.cmd = exec.Command("./backend", "--http")
+	} else {
+		cv.cmd = exec.Command("./backend")
+	}
 	cv.cmd.Dir = projectDir
 
 	stdout, err := cv.cmd.StdoutPipe()
@@ -474,19 +503,28 @@ func (cv *CLIViewer) executeCommand(command string) {
 }
 
 func (cv *CLIViewer) readScratchpads() {
-	socketPath := "/tmp/llm-npc-backend.sock"
+	var client *http.Client
+	var url string
 
-	// Create HTTP client that uses Unix domain socket
-	client := &http.Client{
-		Transport: &http.Transport{
-			Dial: func(network, addr string) (net.Conn, error) {
-				return net.Dial("unix", socketPath)
+	if cv.httpMode {
+		// HTTP mode - use standard HTTP client
+		client = &http.Client{}
+		url = "http://localhost:8080/console/read_scratchpads"
+	} else {
+		// Unix socket mode - use Unix domain socket
+		socketPath := "/tmp/llm-npc-backend.sock"
+		client = &http.Client{
+			Transport: &http.Transport{
+				Dial: func(network, addr string) (net.Conn, error) {
+					return net.Dial("unix", socketPath)
+				},
 			},
-		},
+		}
+		url = "http://unix/console/read_scratchpads"
 	}
 
 	// Make request to console endpoint
-	resp, err := client.Get("http://unix/console/read_scratchpads")
+	resp, err := client.Get(url)
 	if err != nil {
 		cv.printCommandResponse(fmt.Sprintf("Failed to read scratchpads: %v", err))
 		return

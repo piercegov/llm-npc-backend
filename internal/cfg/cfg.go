@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	SocketPath  string
+	HTTPPort    string
 	ApiKey      string
 	BaseUrl     string
 	LogLevel    string
@@ -24,6 +25,11 @@ func ReadConfig() Config {
 	socketPath := os.Getenv("SOCKET_PATH")
 	if socketPath == "" {
 		socketPath = "/tmp/llm-npc-backend.sock"
+	}
+
+	httpPort := os.Getenv("HTTP_PORT")
+	if httpPort == "" {
+		httpPort = ":8080"
 	}
 
 	apiKey := os.Getenv("CEREBRAS_API_KEY")
@@ -48,6 +54,7 @@ func ReadConfig() Config {
 
 	return Config{
 		SocketPath:  socketPath,
+		HTTPPort:    httpPort,
 		ApiKey:      apiKey,
 		BaseUrl:     baseURL,
 		LogLevel:    logLevel,
@@ -55,9 +62,10 @@ func ReadConfig() Config {
 	}
 }
 
-func NewConfig(socketPath, apiKey, baseUrl, logLevel, ollamaModel string) Config {
+func NewConfig(socketPath, httpPort, apiKey, baseUrl, logLevel, ollamaModel string) Config {
 	return Config{
 		SocketPath:  socketPath,
+		HTTPPort:    httpPort,
 		ApiKey:      apiKey,
 		BaseUrl:     baseUrl,
 		LogLevel:    logLevel,

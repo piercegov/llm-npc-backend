@@ -4,14 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Go-based backend for powering Non-Player Characters (NPCs) in video games using Large Language Models. The framework uses Unix domain sockets for efficient IPC communication and is designed to be compatible with popular game engines (Godot, Unity, Unreal Engine).
+This is a Go-based backend for powering Non-Player Characters (NPCs) in video games using Large Language Models. The framework supports both Unix domain sockets for efficient IPC communication and HTTP mode for easier testing and integration with popular game engines (Godot, Unity, Unreal Engine).
 
 ## Development Commands
 
 ### Building and Running
 - **Build**: `go build ./cmd/backend/...`
-- **Run**: `./backend` (after building)
+- **Run (Unix Socket)**: `./backend` (default mode, after building)
+- **Run (HTTP)**: `./backend --http` (HTTP mode for easier testing/integration)
 - **Dependencies**: `go mod tidy`
+
+### Log Viewer
+- **GUI Mode (Unix Socket)**: `./run_logviewer.sh` (default)
+- **GUI Mode (HTTP)**: `./run_logviewer.sh --http`
+- **CLI Mode (Unix Socket)**: `./run_logviewer.sh --cli`
+- **CLI Mode (HTTP)**: `./run_logviewer.sh --cli --http`
 
 ### Testing
 - **Run all tests**: `go test ./...`
@@ -46,6 +53,7 @@ This is a Go-based backend for powering Non-Player Characters (NPCs) in video ga
 
 Environment variables (can be set in `.env` file):
 - `SOCKET_PATH`: Unix socket path (default: /tmp/llm-npc-backend.sock)
+- `HTTP_PORT`: HTTP server port when using --http flag (default: :8080)
 - `OLLAMA_MODEL`: Ollama model to use (default: qwen3:1.7b)
 - `CEREBRAS_API_KEY`: Cerebras API key (optional)
 - `CEREBRAS_BASE_URL`: Cerebras API base URL (default: https://api.cerebras.ai)
@@ -110,7 +118,8 @@ llm-npc-backend/
 ### Module Responsibilities
 
 #### `cmd/backend/main.go`
-- Unix socket server initialization and configuration
+- Server initialization and configuration (Unix socket or HTTP mode)
+- Command line flag parsing (--http flag for HTTP mode)
 - Route definitions and handler setup
 - Middleware application
 - Currently contains mock NPC handler for testing
