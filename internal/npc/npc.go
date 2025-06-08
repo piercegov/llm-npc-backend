@@ -67,41 +67,41 @@ type NPCDeleteResponse struct {
 }
 
 type NPCTickResult struct {
-	Rounds       []InferenceRound
-	LLMResponse  string // Concatenated responses from all rounds
-	Success      bool
-	ErrorMessage string
+	Rounds       []InferenceRound `json:"rounds"`
+	LLMResponse  string           `json:"llm_response"` // Concatenated responses from all rounds
+	Success      bool             `json:"success"`
+	ErrorMessage string           `json:"error_message,omitempty"`
 }
 
 type InferenceRound struct {
-	RoundNumber  int
-	LLMResponse  string
-	ToolsUsed    []ToolResult
-	Success      bool
-	ErrorMessage string
+	RoundNumber  int          `json:"round_number"`
+	LLMResponse  string       `json:"llm_response"`
+	ToolsUsed    []ToolResult `json:"tools_used"`
+	Success      bool         `json:"success"`
+	ErrorMessage string       `json:"error_message,omitempty"`
 }
 
 type ToolResult struct {
-	ToolName string
-	Args     map[string]interface{}
-	Success  bool
-	Response string
-	Error    string
+	ToolName string                 `json:"tool_name"`
+	Args     map[string]interface{} `json:"args"`
+	Success  bool                   `json:"success"`
+	Response string                 `json:"response,omitempty"`
+	Error    string                 `json:"error,omitempty"`
 }
 
 // Maybe this should be related to the knowledge graph?
 type NPCTickEvent struct {
-	EventType        string
-	EventDescription string
+	EventType        string `json:"event_type"`
+	EventDescription string `json:"event_description"`
 }
 
 type NPCTickInput struct {
-	Surroundings        []Surrounding
-	KnowledgeGraph      kg.KnowledgeGraph
-	NPCState            NPCState
-	KnowledgeGraphDepth int
-	Events              []NPCTickEvent
-	ToolRegistry        *tools.ToolRegistry // Optional: if nil, no tools available
+	Surroundings        []Surrounding       `json:"surroundings"`
+	KnowledgeGraph      kg.KnowledgeGraph   `json:"knowledge_graph"`
+	NPCState            NPCState            `json:"npc_state"`
+	KnowledgeGraphDepth int                 `json:"knowledge_graph_depth,omitempty"`
+	Events              []NPCTickEvent      `json:"events"`
+	ToolRegistry        *tools.ToolRegistry `json:"-"` // Optional: if nil, no tools available
 }
 type NPC struct {
 	Name            string
@@ -111,11 +111,12 @@ type NPC struct {
 type NPCState struct {
 	// NOTE: This should probably be configurable, like tools.
 	// e.g. some games need health, some need inventory, faction, etc.
+	// When fields are added, they should include appropriate JSON tags
 }
 
 type Surrounding struct {
-	Name        string
-	Description string
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
 func (n *NPC) ActForTick(input NPCTickInput) NPCTickResult {
