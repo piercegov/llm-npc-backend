@@ -62,6 +62,7 @@ Environment variables (can be set in `.env` file):
 
 #### Ollama Settings
 - `OLLAMA_MODEL`: Ollama model to use (default: qwen3:1.7b)
+- `OLLAMA_BASE_URL`: Ollama server URL (default: http://10.0.0.85:11434)
 
 #### LM Studio Settings
 - `LMSTUDIO_BASE_URL`: LM Studio server URL (default: http://localhost:1234)

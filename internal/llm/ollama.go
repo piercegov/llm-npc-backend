@@ -51,11 +51,11 @@ type ollamaTool struct {
 }
 
 type Ollama struct {
-	OLLAMA_PORT string
+	baseURL string
 }
 
-func NewOllama(ollamaPort string) *Ollama {
-	return &Ollama{OLLAMA_PORT: ollamaPort}
+func NewOllama(baseURL string) *Ollama {
+	return &Ollama{baseURL: baseURL}
 }
 
 func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
@@ -146,7 +146,7 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 		"user_prompt", request.Prompt,
 	)
 
-	httpRequest, err := http.NewRequest("POST", "http://localhost:"+o.OLLAMA_PORT+"/api/chat", bytes.NewBuffer(jsonBody))
+	httpRequest, err := http.NewRequest("POST", o.baseURL+"/api/chat", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		logging.Error("Error creating request", "error", err)
 		return LLMResponse{}, err

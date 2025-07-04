@@ -14,6 +14,7 @@ type Config struct {
 	BaseUrl         string
 	LogLevel        string
 	OllamaModel     string
+	OllamaBaseURL   string
 	LLMProvider     string
 	LMStudioBaseURL string
 	LMStudioModel   string
@@ -56,6 +57,11 @@ func ReadConfig() Config {
 		ollamaModel = "qwen3:1.7b"
 	}
 
+	ollamaBaseURL := os.Getenv("OLLAMA_BASE_URL")
+	if ollamaBaseURL == "" {
+		ollamaBaseURL = "http://10.0.0.85:11434"
+	}
+
 	llmProvider := os.Getenv("LLM_PROVIDER")
 	if llmProvider == "" {
 		llmProvider = "ollama" // Default to Ollama for backward compatibility
@@ -83,6 +89,7 @@ func ReadConfig() Config {
 		BaseUrl:         baseURL,
 		LogLevel:        logLevel,
 		OllamaModel:     ollamaModel,
+		OllamaBaseURL:   ollamaBaseURL,
 		LLMProvider:     llmProvider,
 		LMStudioBaseURL: lmStudioBaseURL,
 		LMStudioModel:   lmStudioModel,
@@ -98,6 +105,7 @@ func NewConfig(socketPath, httpPort, apiKey, baseUrl, logLevel, ollamaModel stri
 		BaseUrl:         baseUrl,
 		LogLevel:        logLevel,
 		OllamaModel:     ollamaModel,
+		OllamaBaseURL:   "http://10.0.0.85:11434", // Default Ollama base URL
 		LLMProvider:     "ollama", // Default for backward compatibility
 		LMStudioBaseURL: "http://localhost:1234",
 		LMStudioModel:   "model",

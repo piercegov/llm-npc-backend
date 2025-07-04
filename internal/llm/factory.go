@@ -14,8 +14,8 @@ func NewProvider(config cfg.Config) (LLMProvider, error) {
 
 	switch provider {
 	case "ollama":
-		logging.Info("Creating Ollama provider", "model", config.OllamaModel)
-		return NewOllama("11434"), nil
+		logging.Info("Creating Ollama provider", "model", config.OllamaModel, "base_url", config.OllamaBaseURL)
+		return NewOllama(config.OllamaBaseURL), nil
 
 	case "lmstudio", "lm-studio":
 		logging.Info("Creating LM Studio provider",
