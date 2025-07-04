@@ -40,7 +40,7 @@ func NewToolRegistry() *ToolRegistry {
 	// Register built-in continue_thinking tool
 	continueThinkingTool := llm.Tool{
 		Name:        "continue_thinking",
-		Description: "Signal that you want to continue thinking and processing after seeing tool results. Use this when you need to analyze tool outputs or make follow-up decisions.",
+		Description: "Signal that you want to continue thinking and processing after seeing tool results. Use this when you need to analyze tool outputs or make follow-up decisions. You will continue thinking immediately - the only new input will be results of tool calls from the current/previous iteration. Use this sparingly and only in cases when you need to wait for the results of another tool call.",
 		Parameters: map[string]llm.ToolParameter{
 			"reason": {
 				Type:        llm.TypeString,
@@ -92,10 +92,10 @@ func (r *ToolRegistry) GetTools() []llm.Tool {
 func (r *ToolRegistry) GetToolsWithSession(sessionTools []llm.Tool) []llm.Tool {
 	// Start with global tools
 	tools := r.GetTools()
-	
+
 	// Add session tools
 	tools = append(tools, sessionTools...)
-	
+
 	return tools
 }
 
@@ -181,7 +181,7 @@ func (c *CombinedToolRegistry) ExecuteTool(ctx context.Context, npcID string, to
 			}, nil
 		}
 	}
-	
+
 	// Fall back to global tools
 	return c.base.ExecuteTool(ctx, npcID, toolUse)
 }
