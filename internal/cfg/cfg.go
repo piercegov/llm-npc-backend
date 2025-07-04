@@ -8,12 +8,16 @@ import (
 )
 
 type Config struct {
-	SocketPath  string
-	HTTPPort    string
-	ApiKey      string
-	BaseUrl     string
-	LogLevel    string
-	OllamaModel string
+	SocketPath      string
+	HTTPPort        string
+	ApiKey          string
+	BaseUrl         string
+	LogLevel        string
+	OllamaModel     string
+	LLMProvider     string
+	LMStudioBaseURL string
+	LMStudioModel   string
+	LMStudioAPIKey  string
 }
 
 func ReadConfig() Config {
@@ -52,23 +56,51 @@ func ReadConfig() Config {
 		ollamaModel = "qwen3:1.7b"
 	}
 
+	llmProvider := os.Getenv("LLM_PROVIDER")
+	if llmProvider == "" {
+		llmProvider = "ollama" // Default to Ollama for backward compatibility
+	}
+
+	lmStudioBaseURL := os.Getenv("LMSTUDIO_BASE_URL")
+	if lmStudioBaseURL == "" {
+		lmStudioBaseURL = "http://localhost:1234"
+	}
+
+	lmStudioModel := os.Getenv("LMSTUDIO_MODEL")
+	if lmStudioModel == "" {
+		lmStudioModel = "model" // Default model identifier
+	}
+
+	lmStudioAPIKey := os.Getenv("LMSTUDIO_API_KEY")
+	if lmStudioAPIKey == "" {
+		lmStudioAPIKey = "lm-studio" // Default API key for LM Studio
+	}
+
 	return Config{
-		SocketPath:  socketPath,
-		HTTPPort:    httpPort,
-		ApiKey:      apiKey,
-		BaseUrl:     baseURL,
-		LogLevel:    logLevel,
-		OllamaModel: ollamaModel,
+		SocketPath:      socketPath,
+		HTTPPort:        httpPort,
+		ApiKey:          apiKey,
+		BaseUrl:         baseURL,
+		LogLevel:        logLevel,
+		OllamaModel:     ollamaModel,
+		LLMProvider:     llmProvider,
+		LMStudioBaseURL: lmStudioBaseURL,
+		LMStudioModel:   lmStudioModel,
+		LMStudioAPIKey:  lmStudioAPIKey,
 	}
 }
 
 func NewConfig(socketPath, httpPort, apiKey, baseUrl, logLevel, ollamaModel string) Config {
 	return Config{
-		SocketPath:  socketPath,
-		HTTPPort:    httpPort,
-		ApiKey:      apiKey,
-		BaseUrl:     baseUrl,
-		LogLevel:    logLevel,
-		OllamaModel: ollamaModel,
+		SocketPath:      socketPath,
+		HTTPPort:        httpPort,
+		ApiKey:          apiKey,
+		BaseUrl:         baseUrl,
+		LogLevel:        logLevel,
+		OllamaModel:     ollamaModel,
+		LLMProvider:     "ollama", // Default for backward compatibility
+		LMStudioBaseURL: "http://localhost:1234",
+		LMStudioModel:   "model",
+		LMStudioAPIKey:  "lm-studio",
 	}
 }

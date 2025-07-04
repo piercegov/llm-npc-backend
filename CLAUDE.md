@@ -31,7 +31,7 @@ This is a Go-based backend for powering Non-Player Characters (NPCs) in video ga
 ### Core Modules
 - **`cmd/backend/main.go`**: Unix socket server entry point with basic health check and root endpoints
 - **`internal/npc/`**: Core NPC logic with tick-based action system (`ActForTick`)
-- **`internal/llm/`**: LLM provider interface and implementations (currently Ollama)
+- **`internal/llm/`**: LLM provider interface and implementations (Ollama, LM Studio)
 - **`internal/api/`**: HTTP middleware, error handling, and request tracing
 - **`internal/kg/`**: Knowledge graph integration for NPC context and memory
 - **`internal/cfg/`**: Configuration management via environment variables
@@ -54,11 +54,23 @@ This is a Go-based backend for powering Non-Player Characters (NPCs) in video ga
 Environment variables (can be set in `.env` file):
 - `SOCKET_PATH`: Unix socket path (default: /tmp/llm-npc-backend.sock)
 - `HTTP_PORT`: HTTP server port when using --http flag (default: :8080)
-- `OLLAMA_MODEL`: Ollama model to use (default: qwen3:1.7b)
-- `CEREBRAS_API_KEY`: Cerebras API key (optional)
-- `CEREBRAS_BASE_URL`: Cerebras API base URL (default: https://api.cerebras.ai)
 - `LOG_LEVEL`: Logging level - debug, info, warn, error (default: info)
   - Set to `debug` to see full LLM prompts and responses in logs
+
+### LLM Provider Configuration
+- `LLM_PROVIDER`: Selects the LLM provider - ollama, lmstudio (default: ollama)
+
+#### Ollama Settings
+- `OLLAMA_MODEL`: Ollama model to use (default: qwen3:1.7b)
+
+#### LM Studio Settings
+- `LMSTUDIO_BASE_URL`: LM Studio server URL (default: http://localhost:1234)
+- `LMSTUDIO_MODEL`: Model identifier for LM Studio (default: model)
+- `LMSTUDIO_API_KEY`: API key for LM Studio (default: lm-studio)
+
+#### Other Providers (Planned)
+- `CEREBRAS_API_KEY`: Cerebras API key (optional)
+- `CEREBRAS_BASE_URL`: Cerebras API base URL (default: https://api.cerebras.ai)
 
 ## Current API Endpoints
 
@@ -143,6 +155,13 @@ llm-npc-backend/
 - **ollama.go**: Ollama-specific implementation of LLMProvider
   - Properly parses Ollama API responses to extract only content
   - Structured logging instead of raw JSON for better readability
+- **lmstudio.go**: LM Studio implementation of LLMProvider
+  - Supports OpenAI-compatible API endpoints
+  - Can connect to LM Studio instances on the local network
+  - Handles tool calling and structured responses
+- **factory.go**: Provider factory for creating LLM instances based on configuration
+  - Dynamically selects between Ollama and LM Studio providers
+  - Centralizes provider instantiation logic
 
 #### `internal/logging/`
 - **logger.go**: Configures structured logging with different log levels

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/piercegov/llm-npc-backend/internal/cfg"
 	"github.com/piercegov/llm-npc-backend/internal/kg"
 	"github.com/piercegov/llm-npc-backend/internal/llm"
 	"github.com/piercegov/llm-npc-backend/internal/logging"
@@ -121,6 +122,7 @@ type Surrounding struct {
 }
 
 func (n *NPC) ActForTick(input NPCTickInput) NPCTickResult {
+	// TODO: there should be a way for the NPC to indicate that it wants to wait for the tool result before continuing to think.
 	return n.actForTickWithDepth(input, 0)
 }
 
@@ -306,9 +308,13 @@ func (n *NPC) actForTickWithDepth(input NPCTickInput, depth int) NPCTickResult {
 }
 
 func CallLLM(input llm.LLMRequest) (llm.LLMResponse, error) {
-	// TODO: This should be configurable to support multiple LLM providers
-	ollama := llm.NewOllama("11434")
-	return ollama.Generate(input)
+	config := cfg.ReadConfig()
+	provider, err := llm.NewProvider(config)
+	if err != nil {
+		logging.Error("Failed to create LLM provider", "error", err)
+		return llm.LLMResponse{}, err
+	}
+	return provider.Generate(input)
 }
 
 func ParseSurroundings(input NPCTickInput) (string, error) {
