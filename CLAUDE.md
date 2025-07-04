@@ -59,6 +59,7 @@ Environment variables (can be set in `.env` file):
 
 ### LLM Provider Configuration
 - `LLM_PROVIDER`: Selects the LLM provider - ollama, lmstudio (default: ollama)
+- `LLM_TIMEOUT`: Request timeout in seconds for LLM calls (default: 30)
 
 #### Ollama Settings
 - `OLLAMA_MODEL`: Ollama model to use (default: qwen3:1.7b)
@@ -102,7 +103,7 @@ llm-npc-backend/
 │       └── main.go              # Unix socket server entry point, route definitions, handlers
 ├── internal/                    # Private application code (not importable by other projects)
 │   ├── api/
-│   │   ├── errors.go           # Standardized error responses and error codes
+│   │   ├── errors.go           # Standardized error responses and error codes (includes LLM-specific codes)
 │   │   ├── middleware.go       # HTTP middleware (logging, panic recovery, tracing, CORS)
 │   │   └── middleware_test.go  # Middleware unit tests
 │   ├── cfg/
@@ -111,6 +112,11 @@ llm-npc-backend/
 │   │   └── kg.go               # Knowledge graph data structures (Node, Edge, KnowledgeGraph)
 │   ├── llm/
 │   │   ├── common.go           # LLM interfaces (LLMProvider, LLMRequest, LLMResponse, Tool)
+│   │   ├── errors.go           # Custom error types for LLM operations
+│   │   ├── errors_test.go      # Tests for LLM error handling
+│   │   ├── factory.go          # Provider factory for creating LLM instances
+│   │   ├── lmstudio.go         # LM Studio LLM provider implementation
+│   │   ├── lmstudio_test.go    # LM Studio provider tests
 │   │   ├── ollama.go           # Ollama LLM provider implementation
 │   │   └── ollama_test.go      # Ollama provider tests
 │   ├── logging/
@@ -139,6 +145,8 @@ llm-npc-backend/
 
 #### `internal/api/`
 - **errors.go**: Defines error codes and standardized JSON error responses
+  - General error codes: `INTERNAL_SERVER_ERROR`, `INVALID_JSON`, `VALIDATION_ERROR`, etc.
+  - LLM-specific error codes: `LLM_PROVIDER_UNAVAILABLE`, `LLM_BAD_REQUEST`, `LLM_RATE_LIMITED`, `LLM_TIMEOUT`, `LLM_UNAUTHORIZED`
 - **middleware.go**: Implements cross-cutting concerns (request ID, logging, panic recovery, CORS)
 
 #### `internal/cfg/`
@@ -153,13 +161,21 @@ llm-npc-backend/
   - `LLMRequest`: Includes SystemPrompt, Prompt, and Tools
   - `LLMResponse`: Contains response text and tool uses
   - `Tool`: Defines callable tools/functions for LLMs
+- **errors.go**: Custom error types for LLM operations
+  - `ProviderError`: Wraps LLM errors with provider context and status codes
+  - Specific errors: `ErrProviderUnavailable`, `ErrBadRequest`, `ErrRateLimited`, `ErrTimeout`, `ErrUnauthorized`, `ErrInternalProvider`
+  - `IsRetryable()`: Helper to determine if errors are transient and retryable
 - **ollama.go**: Ollama-specific implementation of LLMProvider
   - Properly parses Ollama API responses to extract only content
   - Structured logging instead of raw JSON for better readability
+  - Enhanced error handling with HTTP status code mapping
+  - 30-second timeout for requests (TODO: make configurable)
 - **lmstudio.go**: LM Studio implementation of LLMProvider
   - Supports OpenAI-compatible API endpoints
   - Can connect to LM Studio instances on the local network
   - Handles tool calling and structured responses
+  - Maps HTTP errors to custom error types for better error propagation
+  - 30-second timeout for requests (TODO: make configurable)
 - **factory.go**: Provider factory for creating LLM instances based on configuration
   - Dynamically selects between Ollama and LM Studio providers
   - Centralizes provider instantiation logic
@@ -182,6 +198,8 @@ llm-npc-backend/
 - **handlers.go**: HTTP handlers for NPC management endpoints
   - `POST /npc/register`: Register new NPCs
   - `POST /npc/act`: Execute NPC ticks with full input processing
+    - Returns appropriate HTTP status codes based on LLM errors (503 for unavailable, 504 for timeout, 429 for rate limits, etc.)
+    - Maps internal errors to user-friendly messages
   - `GET /npc/list`, `GET /npc/{id}`, `DELETE /npc/{id}`: Management operations
 - **prompts.go**: System prompt templates
   - Instructs LLMs to use `<thinking>` tags for internal reasoning
@@ -194,6 +212,11 @@ llm-npc-backend/
 3. **Structured Logging**: Consistent log format with contextual information
 4. **Environment-based Config**: All configuration through environment variables
 5. **Tick-based NPCs**: Game loop compatible design for NPC actions
+6. **Comprehensive Error Handling**: 
+   - Custom error types for different LLM failures (timeout, rate limit, model not found, etc.)
+   - Proper HTTP status code mapping (404 for model not found, 429 for rate limit, 503 for unavailable)
+   - Detailed error messages returned to clients with specific error codes
+   - Retry logic support with `IsRetryable()` function for transient errors
 
 ### Adding New Features
 

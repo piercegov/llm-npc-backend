@@ -2,6 +2,7 @@ package npc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -169,8 +170,28 @@ func (n *NPC) actForTickWithDepth(input NPCTickInput, depth int) NPCTickResult {
 
 	llmResponse, err := CallLLM(llmRequest)
 	if err != nil {
-		logging.Error("Error calling LLM: %v", err)
-		return NPCTickResult{Success: false, ErrorMessage: fmt.Sprintf("Error calling LLM: %v", err)}
+		logging.Error("Error calling LLM", "error", err, "npc_name", n.Name)
+		
+		// Provide more specific error messages based on error type
+		var errMsg string
+		if errors.Is(err, llm.ErrProviderUnavailable) {
+			errMsg = "LLM service is currently unavailable. Please try again later."
+		} else if errors.Is(err, llm.ErrTimeout) {
+			errMsg = "LLM request timed out. The service may be overloaded."
+		} else if errors.Is(err, llm.ErrRateLimited) {
+			errMsg = "LLM rate limit exceeded. Please slow down your requests."
+		} else if errors.Is(err, llm.ErrBadRequest) {
+			errMsg = "Invalid request to LLM service. Please check your input."
+		} else if errors.Is(err, llm.ErrUnauthorized) {
+			errMsg = "LLM authentication failed. Please check your API credentials."
+		} else if errors.Is(err, llm.ErrModelNotFound) {
+			errMsg = "The requested LLM model is not found. Please check your model configuration."
+		} else {
+			// For other errors, include the error details
+			errMsg = fmt.Sprintf("LLM error: %v", err)
+		}
+		
+		return NPCTickResult{Success: false, ErrorMessage: errMsg}
 	}
 
 	var toolResults []ToolResult

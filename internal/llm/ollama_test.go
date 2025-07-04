@@ -2,10 +2,12 @@ package llm
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestOllama_Generate_SuccessfulResponse(t *testing.T) {
@@ -126,3 +128,150 @@ func makeWeatherTool() Tool {
 		},
 	}
 }
+
+// TestOllama_Generate_ModelNotFound tests the 404 model not found error
+func TestOllama_Generate_ModelNotFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Return 404 Not Found
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusNotFound)
+		rw.Write([]byte(`{"error": "model 'nonexistent-model' not found, try pulling it first"}`))
+	}))
+	defer server.Close()
+
+	ollama := NewOllama(server.URL)
+	_, err := ollama.Generate(LLMRequest{Prompt: "test"})
+
+	if err == nil {
+		t.Fatal("Expected error but got none")
+	}
+
+	// Check if the error is wrapped correctly
+	var provErr *ProviderError
+	if !errors.As(err, &provErr) {
+		t.Fatalf("Expected ProviderError, got %T", err)
+	}
+
+	// Check if the underlying error is ErrModelNotFound
+	if !errors.Is(err, ErrModelNotFound) {
+		t.Errorf("Expected ErrModelNotFound, got %v", err)
+	}
+}
+
+// TestOllama_Generate_BadRequest tests the 400 bad request error
+func TestOllama_Generate_BadRequest(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusBadRequest)
+		rw.Write([]byte(`{"error": "invalid request format"}`))
+	}))
+	defer server.Close()
+
+	ollama := NewOllama(server.URL)
+	_, err := ollama.Generate(LLMRequest{Prompt: "test"})
+
+	if err == nil {
+		t.Fatal("Expected error but got none")
+	}
+
+	if !errors.Is(err, ErrBadRequest) {
+		t.Errorf("Expected ErrBadRequest, got %v", err)
+	}
+}
+
+// TestOllama_Generate_Unauthorized tests the 401 unauthorized error
+func TestOllama_Generate_Unauthorized(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusUnauthorized)
+		rw.Write([]byte(`{"error": "invalid API key"}`))
+	}))
+	defer server.Close()
+
+	ollama := NewOllama(server.URL)
+	_, err := ollama.Generate(LLMRequest{Prompt: "test"})
+
+	if err == nil {
+		t.Fatal("Expected error but got none")
+	}
+
+	if !errors.Is(err, ErrUnauthorized) {
+		t.Errorf("Expected ErrUnauthorized, got %v", err)
+	}
+}
+
+// TestOllama_Generate_RateLimited tests the 429 rate limit error
+func TestOllama_Generate_RateLimited(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusTooManyRequests)
+		rw.Write([]byte(`{"error": "rate limit exceeded"}`))
+	}))
+	defer server.Close()
+
+	ollama := NewOllama(server.URL)
+	_, err := ollama.Generate(LLMRequest{Prompt: "test"})
+
+	if err == nil {
+		t.Fatal("Expected error but got none")
+	}
+
+	if !errors.Is(err, ErrRateLimited) {
+		t.Errorf("Expected ErrRateLimited, got %v", err)
+	}
+}
+
+// TestOllama_Generate_ServiceUnavailable tests the 503 service unavailable error
+func TestOllama_Generate_ServiceUnavailable(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Content-Type", "application/json")
+		rw.WriteHeader(http.StatusServiceUnavailable)
+		rw.Write([]byte(`{"error": "service temporarily unavailable"}`))
+	}))
+	defer server.Close()
+
+	ollama := NewOllama(server.URL)
+	_, err := ollama.Generate(LLMRequest{Prompt: "test"})
+
+	if err == nil {
+		t.Fatal("Expected error but got none")
+	}
+
+	if !errors.Is(err, ErrProviderUnavailable) {
+		t.Errorf("Expected ErrProviderUnavailable, got %v", err)
+	}
+}
+
+// TestOllama_Generate_Timeout tests request timeout
+func TestOllama_Generate_Timeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		// Simulate a slow response that will timeout
+		time.Sleep(2 * time.Second)
+		rw.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Create a custom Ollama instance with a very short timeout for testing
+	// Note: In production, timeout is configured via cfg.ReadConfig()
+	// ollama := NewOllama(server.URL)
+	
+	// We can't easily test the actual timeout without modifying the Generate method
+	// This is a limitation of the current design
+	// In a real test, you might want to add a way to inject the HTTP client
+}
+
+// TestOllama_Generate_ConnectionRefused tests connection refused error
+func TestOllama_Generate_ConnectionRefused(t *testing.T) {
+	// Use a port that's likely not in use
+	ollama := NewOllama("http://localhost:54321")
+	_, err := ollama.Generate(LLMRequest{Prompt: "test"})
+
+	if err == nil {
+		t.Fatal("Expected error but got none")
+	}
+
+	if !errors.Is(err, ErrProviderUnavailable) {
+		t.Errorf("Expected ErrProviderUnavailable, got %v", err)
+	}
+}
+

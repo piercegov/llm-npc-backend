@@ -2,6 +2,8 @@ package cfg
 
 import (
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/piercegov/llm-npc-backend/internal/logging"
@@ -19,6 +21,7 @@ type Config struct {
 	LMStudioBaseURL string
 	LMStudioModel   string
 	LMStudioAPIKey  string
+	LLMTimeout      time.Duration
 }
 
 func ReadConfig() Config {
@@ -82,6 +85,16 @@ func ReadConfig() Config {
 		lmStudioAPIKey = "lm-studio" // Default API key for LM Studio
 	}
 
+	// Parse LLM timeout (default 30 seconds)
+	llmTimeout := 30 * time.Second
+	if timeoutStr := os.Getenv("LLM_TIMEOUT"); timeoutStr != "" {
+		if timeoutSec, err := strconv.Atoi(timeoutStr); err == nil && timeoutSec > 0 {
+			llmTimeout = time.Duration(timeoutSec) * time.Second
+		} else {
+			logging.Warn("Invalid LLM_TIMEOUT value, using default", "value", timeoutStr, "default", "30s")
+		}
+	}
+
 	return Config{
 		SocketPath:      socketPath,
 		HTTPPort:        httpPort,
@@ -94,6 +107,7 @@ func ReadConfig() Config {
 		LMStudioBaseURL: lmStudioBaseURL,
 		LMStudioModel:   lmStudioModel,
 		LMStudioAPIKey:  lmStudioAPIKey,
+		LLMTimeout:      llmTimeout,
 	}
 }
 
@@ -110,5 +124,6 @@ func NewConfig(socketPath, httpPort, apiKey, baseUrl, logLevel, ollamaModel stri
 		LMStudioBaseURL: "http://localhost:1234",
 		LMStudioModel:   "model",
 		LMStudioAPIKey:  "lm-studio",
+		LLMTimeout:      30 * time.Second,
 	}
 }

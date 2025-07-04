@@ -108,12 +108,43 @@ func (h *NPCHandlers) ActHandler(w http.ResponseWriter, r *http.Request) {
 	// Execute the tick
 	result := npc.ActForTick(req.NPCTickInput)
 
+	// Check if the result indicates a failure
+	if !result.Success && result.ErrorMessage != "" {
+		// Determine appropriate HTTP status code based on error message
+		statusCode := http.StatusInternalServerError
+		errorCode := api.ErrCodeInternalServer
+		
+		if strings.Contains(result.ErrorMessage, "unavailable") {
+			statusCode = http.StatusServiceUnavailable
+			errorCode = api.ErrCodeLLMProviderUnavailable
+		} else if strings.Contains(result.ErrorMessage, "timed out") {
+			statusCode = http.StatusGatewayTimeout
+			errorCode = api.ErrCodeLLMTimeout
+		} else if strings.Contains(result.ErrorMessage, "rate limit") {
+			statusCode = http.StatusTooManyRequests
+			errorCode = api.ErrCodeLLMRateLimited
+		} else if strings.Contains(result.ErrorMessage, "Invalid request") {
+			statusCode = http.StatusBadRequest
+			errorCode = api.ErrCodeLLMBadRequest
+		} else if strings.Contains(result.ErrorMessage, "authentication failed") {
+			statusCode = http.StatusUnauthorized
+			errorCode = api.ErrCodeLLMUnauthorized
+		} else if strings.Contains(result.ErrorMessage, "model is not found") {
+			statusCode = http.StatusNotFound
+			errorCode = api.ErrCodeLLMModelNotFound
+		}
+		
+		api.WriteErrorResponse(w, statusCode, result.ErrorMessage, errorCode, nil, r.Context())
+		return
+	}
+
 	response := NPCActResponse{
 		NPCID:         req.NPCID,
 		NPCTickResult: result,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(response)
 }
 

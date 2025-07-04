@@ -27,6 +27,14 @@ const (
 	ErrCodeServiceUnavailable = "SERVICE_UNAVAILABLE"
 	ErrCodeNotFound           = "NOT_FOUND"
 	ErrCodeBadRequest         = "BAD_REQUEST"
+	
+	// LLM-specific error codes
+	ErrCodeLLMProviderUnavailable = "LLM_PROVIDER_UNAVAILABLE"
+	ErrCodeLLMBadRequest          = "LLM_BAD_REQUEST"
+	ErrCodeLLMRateLimited         = "LLM_RATE_LIMITED"
+	ErrCodeLLMTimeout             = "LLM_TIMEOUT"
+	ErrCodeLLMUnauthorized        = "LLM_UNAUTHORIZED"
+	ErrCodeLLMModelNotFound       = "LLM_MODEL_NOT_FOUND"
 )
 
 // Map HTTP status codes to error codes

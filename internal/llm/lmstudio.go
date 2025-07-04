@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 
+	"github.com/piercegov/llm-npc-backend/internal/cfg"
 	"github.com/piercegov/llm-npc-backend/internal/logging"
 )
 
@@ -161,7 +163,7 @@ func (l *LMStudio) Generate(request LLMRequest) (LLMResponse, error) {
 	jsonBody, err := json.Marshal(lmReq)
 	if err != nil {
 		logging.Error("Failed to marshal LM Studio request", "error", err)
-		return LLMResponse{}, err
+		return LLMResponse{}, NewProviderError("lmstudio", l.Model, err, "failed to marshal request")
 	}
 
 	// Log request details
@@ -181,19 +183,26 @@ func (l *LMStudio) Generate(request LLMRequest) (LLMResponse, error) {
 	httpReq, err := http.NewRequest("POST", l.BaseURL+"/v1/chat/completions", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		logging.Error("Failed to create HTTP request", "error", err)
-		return LLMResponse{}, err
+		return LLMResponse{}, NewProviderError("lmstudio", l.Model, err, "failed to create request")
 	}
 
 	// Set headers
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer "+l.APIKey)
 
-	// Send request
-	client := &http.Client{}
+	// Send request with configurable timeout
+	config := cfg.ReadConfig()
+	client := &http.Client{
+		Timeout: config.LLMTimeout,
+	}
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		logging.Error("Failed to send request to LM Studio", "error", err)
-		return LLMResponse{}, err
+		// Check if it's a timeout
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			return LLMResponse{}, NewProviderError("lmstudio", l.Model, ErrTimeout, "request timed out")
+		}
+		return LLMResponse{}, NewProviderError("lmstudio", l.Model, ErrProviderUnavailable, "failed to connect to LM Studio")
 	}
 	defer resp.Body.Close()
 
@@ -201,7 +210,7 @@ func (l *LMStudio) Generate(request LLMRequest) (LLMResponse, error) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logging.Error("Failed to read response body", "error", err)
-		return LLMResponse{}, err
+		return LLMResponse{}, NewProviderError("lmstudio", l.Model, err, "failed to read response")
 	}
 
 	// Check for non-200 status
@@ -210,17 +219,42 @@ func (l *LMStudio) Generate(request LLMRequest) (LLMResponse, error) {
 			"status_code", resp.StatusCode,
 			"body", string(body),
 		)
-		return LLMResponse{
-			StatusCode: resp.StatusCode,
-			Response:   fmt.Sprintf("LM Studio error: %s", string(body)),
-		}, nil
+
+		// Map status codes to appropriate errors
+		var baseErr error
+		var message string
+		switch resp.StatusCode {
+		case http.StatusBadRequest:
+			baseErr = ErrBadRequest
+			message = "invalid request parameters"
+		case http.StatusUnauthorized:
+			baseErr = ErrUnauthorized
+			message = "authentication failed"
+		case http.StatusNotFound:
+			baseErr = ErrModelNotFound
+			message = fmt.Sprintf("model '%s' not found", l.Model)
+		case http.StatusTooManyRequests:
+			baseErr = ErrRateLimited
+			message = "rate limit exceeded"
+		case http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable:
+			baseErr = ErrProviderUnavailable
+			message = "LM Studio service unavailable"
+		case http.StatusGatewayTimeout:
+			baseErr = ErrTimeout
+			message = "gateway timeout"
+		default:
+			baseErr = fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+			message = string(body)
+		}
+
+		return LLMResponse{}, NewProviderError("lmstudio", l.Model, baseErr, message)
 	}
 
 	// Parse response
 	var lmResp lmStudioResponse
 	if err := json.Unmarshal(body, &lmResp); err != nil {
 		logging.Error("Failed to unmarshal LM Studio response", "error", err, "body", string(body))
-		return LLMResponse{}, err
+		return LLMResponse{}, NewProviderError("lmstudio", l.Model, err, "invalid response format")
 	}
 
 	// Extract response content and tool calls

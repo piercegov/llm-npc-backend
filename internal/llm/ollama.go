@@ -3,7 +3,9 @@ package llm
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 
 	"github.com/piercegov/llm-npc-backend/internal/cfg"
@@ -154,25 +156,72 @@ func (o *Ollama) Generate(request LLMRequest) (LLMResponse, error) {
 
 	httpRequest.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	// Create client with configurable timeout
+	config := cfg.ReadConfig()
+	client := &http.Client{
+		Timeout: config.LLMTimeout,
+	}
 	response, err := client.Do(httpRequest)
 
 	if err != nil {
-		return LLMResponse{}, err
+		logging.Error("Failed to send request to Ollama", "error", err)
+		// Check if it's a timeout
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			return LLMResponse{}, NewProviderError("ollama", ollamaModel, ErrTimeout, "request timed out")
+		}
+		return LLMResponse{}, NewProviderError("ollama", ollamaModel, ErrProviderUnavailable, "failed to connect to Ollama")
 	}
 
 	defer response.Body.Close()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return LLMResponse{}, err
+		logging.Error("Failed to read response body", "error", err)
+		return LLMResponse{}, NewProviderError("ollama", ollamaModel, err, "failed to read response")
+	}
+
+	// Check HTTP status code
+	if response.StatusCode != http.StatusOK {
+		logging.Error("Ollama returned non-200 status",
+			"status_code", response.StatusCode,
+			"body", string(body),
+		)
+
+		// Map status codes to appropriate errors
+		var baseErr error
+		var message string
+		switch response.StatusCode {
+		case http.StatusBadRequest:
+			baseErr = ErrBadRequest
+			message = "invalid request parameters"
+		case http.StatusUnauthorized:
+			baseErr = ErrUnauthorized  
+			message = "authentication failed"
+		case http.StatusNotFound:
+			baseErr = ErrModelNotFound
+			message = fmt.Sprintf("model '%s' not found", ollamaModel)
+		case http.StatusTooManyRequests:
+			baseErr = ErrRateLimited
+			message = "rate limit exceeded"
+		case http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable:
+			baseErr = ErrProviderUnavailable
+			message = "Ollama service unavailable"
+		case http.StatusGatewayTimeout:
+			baseErr = ErrTimeout
+			message = "gateway timeout"
+		default:
+			baseErr = fmt.Errorf("unexpected status code: %d", response.StatusCode)
+			message = string(body)
+		}
+
+		return LLMResponse{}, NewProviderError("ollama", ollamaModel, baseErr, message)
 	}
 
 	// Parse the full Ollama response
 	var parsedResp ollamaResponse
 	if err := json.Unmarshal(body, &parsedResp); err != nil {
 		logging.Error("Failed to unmarshal Ollama response", "error", err, "body", string(body))
-		return LLMResponse{}, err
+		return LLMResponse{}, NewProviderError("ollama", ollamaModel, err, "invalid response format")
 	}
 
 	// Extract tool uses from the parsed response
