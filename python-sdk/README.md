@@ -2,7 +2,7 @@
 
 A simple and powerful Python SDK for building intelligent NPCs using the [LLM NPC Backend](../README.md).
 
-📚 **[Read the Full Documentation](https://yourusername.github.io/llm-npc-backend/python-sdk/)**
+📚 **[Read the Full Documentation](https://piercegov.github.io/llm-npc-backend/)**
 
 ## Features
 

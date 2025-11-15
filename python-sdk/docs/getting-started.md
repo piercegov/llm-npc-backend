@@ -7,7 +7,7 @@ This guide will help you get up and running with the LLM NPC Python SDK in minut
 Before you begin, ensure you have:
 
 1. **Python 3.8 or higher** installed
-2. **LLM NPC Backend** running (see [backend setup](https://github.com/yourusername/llm-npc-backend#readme))
+2. **LLM NPC Backend** running (see [backend setup](https://github.com/piercegov/llm-npc-backend#readme))
 3. **pip** package manager
 
 ## Installation
@@ -33,7 +33,7 @@ Clone the repository and install the SDK:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/llm-npc-backend.git
+git clone https://github.com/piercegov/llm-npc-backend.git
 cd llm-npc-backend/python-sdk
 
 # Install in development mode
@@ -312,7 +312,7 @@ pip install -e ".[dev]"
 
 ### Environment Variables
 
-The backend can be configured via environment variables. See the [backend documentation](https://github.com/yourusername/llm-npc-backend#configuration) for details.
+The backend can be configured via environment variables. See the [backend documentation](https://github.com/piercegov/llm-npc-backend#configuration) for details.
 
 ## Next Steps
 

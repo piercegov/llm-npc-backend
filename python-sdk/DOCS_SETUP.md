@@ -101,7 +101,7 @@ git push origin main
 2. GitHub Actions will:
    - Build the documentation
    - Deploy to `gh-pages` branch
-   - Make it available at: `https://yourusername.github.io/llm-npc-backend/python-sdk/`
+   - Make it available at: `https://piercegov.github.io/llm-npc-backend/python-sdk/`
 
 3. Enable GitHub Pages:
    - Go to your repo settings
@@ -240,8 +240,8 @@ site_url: https://your-url.com
 Update in `mkdocs.yml`:
 
 ```yaml
-repo_name: yourusername/llm-npc-backend
-repo_url: https://github.com/yourusername/llm-npc-backend
+repo_name: piercegov/llm-npc-backend
+repo_url: https://github.com/piercegov/llm-npc-backend
 ```
 
 ## 🐛 Troubleshooting
@@ -290,7 +290,7 @@ Check that:
 
 ## Next Steps
 
-1. **Update URLs**: Replace `yourusername` in:
+1. **Update URLs**: Replace `piercegov` in:
    - `mkdocs.yml`
    - `pyproject.toml`
    - GitHub Actions workflow

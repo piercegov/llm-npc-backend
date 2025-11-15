@@ -77,7 +77,7 @@ uv pip install -e ".[dev]"
 ## Requirements
 
 - Python 3.8+
-- Running [LLM NPC Backend](https://github.com/yourusername/llm-npc-backend) server
+- Running [LLM NPC Backend](https://github.com/piercegov/llm-npc-backend) server
 
 ## Next Steps
 
@@ -188,9 +188,9 @@ The SDK reduces boilerplate by **~90%** and provides type safety, better error h
 
 ## Community & Support
 
-- **Repository**: [GitHub](https://github.com/yourusername/llm-npc-backend)
-- **Issues**: [Report bugs or request features](https://github.com/yourusername/llm-npc-backend/issues)
-- **Backend Docs**: [Main project documentation](https://github.com/yourusername/llm-npc-backend)
+- **Repository**: [GitHub](https://github.com/piercegov/llm-npc-backend)
+- **Issues**: [Report bugs or request features](https://github.com/piercegov/llm-npc-backend/issues)
+- **Backend Docs**: [Main project documentation](https://github.com/piercegov/llm-npc-backend)
 
 ## License
 

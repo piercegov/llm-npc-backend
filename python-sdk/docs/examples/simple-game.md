@@ -4,7 +4,7 @@ This example demonstrates the core features of the SDK through a tavern scenario
 
 ## Source Code
 
-The complete example is available at [`examples/simple_game.py`](https://github.com/yourusername/llm-npc-backend/blob/main/python-sdk/examples/simple_game.py).
+The complete example is available at [`examples/simple_game.py`](https://github.com/piercegov/llm-npc-backend/blob/main/python-sdk/examples/simple_game.py).
 
 ## Overview
 

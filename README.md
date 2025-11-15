@@ -1,5 +1,8 @@
 # LLM NPC Framework Backend
 
+[![Documentation](https://img.shields.io/badge/docs-live-brightgreen?style=for-the-badge&logo=read-the-docs)](https://piercegov.github.io/llm-npc-backend/)
+[![Python SDK](https://img.shields.io/badge/Python_SDK-available-blue?style=for-the-badge&logo=python)](https://piercegov.github.io/llm-npc-backend/)
+
 This project provides a backend framework for powering Non-Player Characters (NPCs) in video games using Large Language Models (LLMs). It is designed to be compatible with popular game engines such as Godot, Unity, and Unreal Engine.
 
 ## Features

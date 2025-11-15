@@ -1,10 +1,10 @@
 site_name: LLM NPC Python SDK
 site_description: Python SDK for building intelligent NPCs using Large Language Models
 site_author: LLM NPC Backend Contributors
-site_url: https://yourusername.github.io/llm-npc-backend/python-sdk/
+site_url: https://piercegov.github.io/llm-npc-backend/
 
-repo_name: llm-npc-backend
-repo_url: https://github.com/yourusername/llm-npc-backend
+repo_name: piercegov/llm-npc-backend
+repo_url: https://github.com/piercegov/llm-npc-backend
 edit_uri: edit/main/python-sdk/docs/
 
 theme:
@@ -93,7 +93,7 @@ nav:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/yourusername/llm-npc-backend
+      link: https://github.com/piercegov/llm-npc-backend
   version:
     provider: mike
 
