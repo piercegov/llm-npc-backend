@@ -86,7 +86,7 @@ class KnowledgeGraph:
         self._nodes: List[Dict[str, Any]] = []
         self._edges: List[Dict[str, Any]] = []
     
-    def add_node(self, node_id: str, **data) -> "KnowledgeGraph":
+    def add_node(self, node_id: str, **data: Any) -> "KnowledgeGraph":
         """
         Add a node to the knowledge graph.
         
@@ -103,7 +103,7 @@ class KnowledgeGraph:
         })
         return self
     
-    def add_edge(self, source: str, target: str, **data) -> "KnowledgeGraph":
+    def add_edge(self, source: str, target: str, **data: Any) -> "KnowledgeGraph":
         """
         Add an edge (relationship) between two nodes.
         
