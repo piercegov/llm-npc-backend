@@ -2,6 +2,8 @@
 
 A simple and powerful Python SDK for building intelligent NPCs using the [LLM NPC Backend](../README.md).
 
+📚 **[Read the Full Documentation](https://yourusername.github.io/llm-npc-backend/python-sdk/)**
+
 ## Features
 
 - 🎯 **Simple API**: Clean, intuitive interface for creating and managing NPCs
@@ -15,16 +17,31 @@ A simple and powerful Python SDK for building intelligent NPCs using the [LLM NP
 ### From Source (Development)
 
 ```bash
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
 # From the repository root
 cd python-sdk
-pip install -e .
+uv pip install -e .
 ```
 
 ### With Development Dependencies
 
 ```bash
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 ```
+
+### Documentation Dependencies
+
+To build the documentation locally:
+
+```bash
+uv pip install -e ".[docs]"
+cd python-sdk
+mkdocs serve
+```
+
+Then visit `http://localhost:8000` to view the documentation.
 
 ## Quick Start
 
