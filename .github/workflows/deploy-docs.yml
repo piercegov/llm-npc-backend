@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd python-sdk
-          uv pip install -e ".[docs]"
+          uv pip install --system -e ".[docs]"
 
       - name: Build documentation
         run: |
