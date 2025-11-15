@@ -1,67 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/getting-started/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/getting-started/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/advanced/best-practices/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/advanced/best-practices/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/advanced/error-handling/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/advanced/error-handling/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/api/client/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/api/client/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/api/context/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/api/context/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/api/decorators/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/api/decorators/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/api/exceptions/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/api/exceptions/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/api/models/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/api/models/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/examples/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/examples/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/examples/simple-game/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/examples/simple-game/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/user-guide/context/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/user-guide/context/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/user-guide/knowledge-graphs/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/user-guide/knowledge-graphs/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/user-guide/npcs/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/user-guide/npcs/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/user-guide/responses/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/user-guide/responses/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
     <url>
-         <loc>https://yourusername.github.io/llm-npc-backend/python-sdk/user-guide/tools/</loc>
+         <loc>https://piercegov.github.io/llm-npc-backend/user-guide/tools/</loc>
          <lastmod>2025-11-15</lastmod>
     </url>
 </urlset>
