@@ -62,7 +62,7 @@ func ReadConfig() Config {
 
 	ollamaBaseURL := os.Getenv("OLLAMA_BASE_URL")
 	if ollamaBaseURL == "" {
-		ollamaBaseURL = "http://10.0.0.85:11434"
+		ollamaBaseURL = "http://localhost:11434"
 	}
 
 	llmProvider := os.Getenv("LLM_PROVIDER")
@@ -119,7 +119,7 @@ func NewConfig(socketPath, httpPort, apiKey, baseUrl, logLevel, ollamaModel stri
 		BaseUrl:         baseUrl,
 		LogLevel:        logLevel,
 		OllamaModel:     ollamaModel,
-		OllamaBaseURL:   "http://10.0.0.85:11434", // Default Ollama base URL
+		OllamaBaseURL:   "http://localhost:11434",
 		LLMProvider:     "ollama", // Default for backward compatibility
 		LMStudioBaseURL: "http://localhost:1234",
 		LMStudioModel:   "model",

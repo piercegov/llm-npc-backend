@@ -2,6 +2,7 @@ package llm
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -211,17 +212,15 @@ func TestLMStudioGenerateError(t *testing.T) {
 	}
 
 	// Generate response
-	response, err := provider.Generate(request)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
+	_, err := provider.Generate(request)
+
+	// Should get an error
+	if err == nil {
+		t.Fatal("Expected error, got nil")
 	}
 
-	// Should get error in response
-	if response.StatusCode != http.StatusInternalServerError {
-		t.Errorf("Expected status code 500, got %d", response.StatusCode)
-	}
-
-	if !strings.Contains(response.Response, "LM Studio error") {
-		t.Errorf("Expected error message in response, got %s", response.Response)
+	// Check that it's the right error type
+	if !errors.Is(err, ErrProviderUnavailable) {
+		t.Errorf("Expected ErrProviderUnavailable, got %v", err)
 	}
 }

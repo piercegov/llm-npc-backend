@@ -33,13 +33,13 @@ type LLMRequest struct {
 }
 
 type Tool struct {
-	Name        string
-	Description string
-	Parameters  map[string]ToolParameter
+	Name        string                   `json:"name"`
+	Description string                   `json:"description"`
+	Parameters  map[string]ToolParameter `json:"parameters"`
 }
 
 type ToolParameter struct {
-	Type        ParameterType
-	Description string
-	Required    bool
+	Type        ParameterType `json:"type"`
+	Description string        `json:"description"`
+	Required    bool          `json:"required"`
 }

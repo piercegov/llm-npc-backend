@@ -42,13 +42,8 @@ func TestOllama_Generate_SuccessfulResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Extract port from server.URL (e.g., "http://127.0.0.1:12345" -> "12345")
-	// The server.URL is like "http://127.0.0.1:PORT"
-	urlParts := strings.Split(server.URL, ":")
-	port := urlParts[len(urlParts)-1]
-
-	// Initialize Ollama with the mock server's port
-	ollama := NewOllama(port)
+	// Initialize Ollama with the mock server's URL
+	ollama := NewOllama(server.URL)
 
 	prompt := "Hello, Ollama!"
 	response, err := ollama.Generate(LLMRequest{Prompt: prompt})
@@ -73,8 +68,8 @@ func TestOllama_Generate_WithToolCall(t *testing.T) {
 		t.Skip("Skipping integration test in short mode.")
 	}
 
-	// Use the default Ollama port for the integration test.
-	ollama := NewOllama("11434")
+	// Use the default Ollama URL for the integration test.
+	ollama := NewOllama("http://localhost:11434")
 
 	// Prompt designed to trigger a tool call
 	prompt := "Please use a tool to get the current weather in Paris in celsius."
@@ -254,7 +249,7 @@ func TestOllama_Generate_Timeout(t *testing.T) {
 	// Create a custom Ollama instance with a very short timeout for testing
 	// Note: In production, timeout is configured via cfg.ReadConfig()
 	// ollama := NewOllama(server.URL)
-	
+
 	// We can't easily test the actual timeout without modifying the Generate method
 	// This is a limitation of the current design
 	// In a real test, you might want to add a way to inject the HTTP client
@@ -274,4 +269,3 @@ func TestOllama_Generate_ConnectionRefused(t *testing.T) {
 		t.Errorf("Expected ErrProviderUnavailable, got %v", err)
 	}
 }
-
