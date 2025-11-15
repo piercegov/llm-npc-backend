@@ -1,0 +1,14 @@
+[project]
+name = "llm-npc-examples"
+version = "0.1.0"
+description = "Example game clients for LLM NPC Backend"
+requires-python = ">=3.8"
+dependencies = [
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
